@@ -127,9 +127,11 @@ To contribute to this module, please visit https://github.com/TristanMozos/
 
     # always loaded
     'data':[
-        # 'security/ir.model.access.csv',
+        'security/connector_security.xml',
+        'security/ir.model.access.csv',
         'wizards/wizard_import_orders.xml',
         'wizards/wizard_export_products.xml',
+        'wizards/wizard_set_change_prices_margins_flag.xml',
         'views/amazon_config_views.xml',
         'views/amazon_backend_views.xml',
         'views/amazon_order_views.xml',

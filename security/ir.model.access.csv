@@ -1,15 +1,27 @@
 "id","name","model_id:id","group_id:id","perm_read","perm_write","perm_create","perm_unlink"
-"access_amazon_backend","amazon_backend connector manager","model_amazon_backend","connector.group_connector_manager",1,1,1,1
-"access_amazon_binding","amazon_binding connector manager","model_amazon_binding","connector.group_connector_manager",1,1,1,1
-"access_amazon_product_product","amazon_product_product connector manager","model_amazon_product_product","connector.group_connector_manager",1,1,1,1
-"access_amazon_report","amazon_report connector manager","model_amazon_report","connector.group_connector_manager",1,1,1,1
-"access_amazon_sale_order","amazon_sale_order connector manager","model_amazon_sale_order","connector.group_connector_manager",1,1,1,1
-"access_amazon_sale_order_line","amazon_sale_order_line connector manager","model_amazon_sale_order_line","connector.group_connector_manager",1,1,1,1
-"access_amazon_backend_user","amazon_backend user","model_amazon_backend","sales_team.group_sale_salesman",1,0,0,0
-"access_amazon_backend_sale_manager","amazon_backend manager","model_amazon_backend","sales_team.group_sale_manager",1,0,0,0
-"access_amazon_product_product_user","amazon_product_product user","model_amazon_product_product","sales_team.group_sale_salesman",1,0,0,0
-"access_amazon_product_product_sale_manager","amazon_product_product sale manager","model_amazon_product_product","sales_team.group_sale_manager",1,1,1,1
-"access_amazon_sale_order_sale_salesman","amazon_sale_order","model_amazon_sale_order","sales_team.group_sale_salesman",1,1,1,1
-"access_amazon_sale_order_sale_manager","amazon_sale_order","model_amazon_sale_order","sales_team.group_sale_manager",1,1,1,1
-"access_amazon_sale_order_line_sale_salesman","amazon_sale_order_line","model_amazon_sale_order_line","sales_team.group_sale_salesman",1,1,1,1
-"access_amazon_sale_order_line_sale_manager","amazon_sale_order_line","model_amazon_sale_order_line","sales_team.group_sale_manager",1,1,1,1
+"access_amazon_backend_user","connector_amazon.config.user","connector_amazon.model_amazon_backend","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_backend_manager","connector_amazon.config.manager","connector_amazon.model_amazon_backend","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_sale_user","connector_amazon.config.user","connector_amazon.model_amazon_sale_order","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_sale_manager","connector_amazon.config.manager","connector_amazon.model_amazon_sale_order","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_sale_line_user","connector_amazon.config.user","connector_amazon.model_amazon_sale_order_line","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_sale_line_manager","connector_amazon.config.manager","connector_amazon.model_amazon_sale_order_line","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_product_user","connector_amazon.config.user","connector_amazon.model_amazon_product_product","connector_amazon.group_connector_amazon_user",1,1,1,1
+"access_amazon_product_manager","connector_amazon.config.manager","connector_amazon.model_amazon_product_product","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_product_detail_user","connector_amazon.config.user","connector_amazon.model_amazon_product_product_detail","connector_amazon.group_connector_amazon_user",1,1,1,1
+"access_amazon_product_detail_manager","connector_amazon.config.manager","connector_amazon.model_amazon_product_product_detail","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_product_offer_user","connector_amazon.config.user","connector_amazon.model_amazon_product_offer","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_product_offer_manager","connector_amazon.config.manager","connector_amazon.model_amazon_product_offer","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_historic_product_offer_user","connector_amazon.config.user","connector_amazon.model_amazon_historic_product_offer","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_historic_product_offer_manager","connector_amazon.config.manager","connector_amazon.model_amazon_historic_product_offer","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_shipping_template_user","connector_amazon.config.user","connector_amazon.model_amazon_shipping_template","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_shipping_template_manager","connector_amazon.config.manager","connector_amazon.model_amazon_shipping_template","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_config_marketplace_user","connector_amazon.config.user","connector_amazon.model_amazon_config_marketplace","connector_amazon.group_connector_amazon_user",1,0,1,0
+"access_amazon_config_marketplace_manager","connector_amazon.config.manager","connector_amazon.model_amazon_config_marketplace","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_feed_tothrow_user","connector_amazon.config.user","connector_amazon.model_amazon_feed_tothrow","connector_amazon.group_connector_amazon_user",1,0,1,0
+"access_amazon_feed_tothrow_manager","connector_amazon.config.manager","connector_amazon.model_amazon_feed_tothrow","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_control_request_user","connector_amazon.config.user","connector_amazon.model_amazon_control_request","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_control_request_manager","connector_amazon.config.manager","connector_amazon.model_amazon_control_request","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_config_order_status_user","connector_amazon.config.user","connector_amazon.model_amazon_config_order_status","connector_amazon.group_connector_amazon_user",1,0,0,0
+"access_amazon_config_order_status_manager","connector_amazon.config.manager","connector_amazon.model_amazon_config_order_status","connector_amazon.group_connector_amazon_manager",1,1,1,1
+"access_amazon_config_product_brand_ban_user","connector_amazon.config.user","connector_amazon.model_amazon_brand_ban","connector_amazon.group_connector_amazon_user",1,1,1,1
+"access_amazon_config_product_brand_ban_manager","connector_amazon.config.manager","connector_amazon.model_amazon_brand_ban","connector_amazon.group_connector_amazon_manager",1,1,1,1

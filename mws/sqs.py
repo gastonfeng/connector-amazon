@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # © 2018 Halltic eSolutions S.L.
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
-from odoo import models, fields
 import boto3
+from datetime import datetime, timedelta
+
+from odoo import models, fields
 
 DEFAULT_ROUND_MESSAGES_TO_PROCESS = '10'
 
@@ -53,14 +55,15 @@ class SQSAccount(models.Model):
                 for message in response['Messages']:
                     sqs_env = self.env['amazon.config.sqs.message']
                     # We check if the message has been imported before
-                    result = sqs_env.search([('id_message', '=', message['MessageId'])])
+                    result = sqs_env.search_count([('id_message', '=', message['MessageId'])])
                     if not result:
                         # If the message is new
-                        result = sqs_env.create({'id_message':message['MessageId'],
-                                                 'recept_handle':message['ReceiptHandle'],
-                                                 'body':message['Body'],
-                                                 'sqs_account_id':self.id,
-                                                 'sqs_deleted':remove_messages})
+                        vals = {'id_message':message['MessageId'],
+                                'recept_handle':message['ReceiptHandle'],
+                                'body':message['Body'],
+                                'sqs_account_id':self.id,
+                                'sqs_deleted':remove_messages}
+                        result = sqs_env.create(vals)
                     # We remove the message from sqs
                     if remove_messages and result:
                         sqs.delete_message(

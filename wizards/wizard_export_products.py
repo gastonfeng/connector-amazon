@@ -7,8 +7,6 @@ from datetime import datetime, timedelta
 from odoo import fields, models, api, _
 from odoo.exceptions import UserError
 
-from ..models.config.common import AMAZON_DEFAULT_PERCENTAGE_FEE
-
 
 class WizardProductToAmazonExport(models.TransientModel):
     _name = "amazon.product.to.export.wizard"
@@ -90,15 +88,19 @@ class WizardListProductsToExport(models.TransientModel):
             products = self.env['product.template'].browse(self._context.get('active_ids', []))
 
             if not products:
-                raise UserError(_('There aren\'t products to export'))
+                raise UserError(_('You must select one or more products to export'))
 
             with wizard.backend_id.work_on(self._name) as work:
                 importer_product_forid = work.component(model_name='amazon.product.product', usage='amazon.product.data.import')
 
                 for product in products:
-                    if product.is_amazon_product:
-                        wizard.write({'product_cant_export_ids':[(0, 0, {'product_id':product.id,
-                                                                         'can_be_export':'no_is_amazon_product'})]})
+                    # if product.is_amazon_product:
+                    #    wizard.write({'product_cant_export_ids':[(0, 0, {'product_id':product.id,
+                    #                                                     'can_be_export':'no_is_amazon_product'})]})
+                    if product.product_variant_id.amazon_bind_ids:
+                        wizard.write({'product_export_ids':[(0, 0, {'product_id':product.id,
+                                                                    'asin':product.product_variant_id.amazon_bind_ids.asin})]})
+
                     elif not product.barcode and not product.product_variant_id.barcode:
                         wizard.write({'product_cant_export_ids':[(0, 0, {'product_id':product.id,
                                                                          'can_be_export':'no_hasnt_barcode'})]})
@@ -139,7 +141,7 @@ class WizardListProductsToExport(models.TransientModel):
 
     def export_products_list(self):
         if not self.product_export_ids:
-            raise UserError(_('There aren\'t products to export'))
+            raise UserError(_('There aren\'export_recordt products to export'))
 
         if self.margin_to_export and self.margin_to_export < 1:
             raise UserError(_('The margin must be a positive number greater than one'))
@@ -148,39 +150,14 @@ class WizardListProductsToExport(models.TransientModel):
             raise UserError(_('There aren\'t marketplaces to export'))
 
         for product in self.product_export_ids:
-            for marketplace in self.marketplace_ids:
-                row = {}
-                row['sku'] = product.product_id.default_code or product.product_id.product_variant_id.default_code
-                row['product-id'] = product.asin
-                row['product-id-type'] = 'ASIN'
-                price = product.product_id.product_variant_id._calc_amazon_price(backend=self.backend_id,
-                                                                                 margin=self.margin_to_export,
-                                                                                 marketplace=marketplace,
-                                                                                 percentage_fee=AMAZON_DEFAULT_PERCENTAGE_FEE)
-                row['price'] = ("%.2f" % price).replace('.', marketplace.decimal_currency_separator) if price else ''
-                row['minimum-seller-allowed-price'] = ''
-                row['maximum-seller-allowed-price'] = ''
-                row['item-condition'] = '11'  # We assume the products are new
-                row['quantity'] = '0'  # The products stocks allways is 0 when we export these
-                row['add-delete'] = 'a'
-                row['will-ship-internationally'] = ''
-                row['expedited-shipping'] = ''
-                row['merchant-shipping-group-name'] = ''
-                handling_time = product.product_id.product_variant_id._compute_amazon_handling_time() or ''
-                row['handling-time'] = str(handling_time) if price else ''
-                row['item_weight'] = ''
-                row['item_weight_unit_of_measure'] = ''
-                row['item_volume'] = ''
-                row['item_volume_unit_of_measure'] = ''
-                row['id_mws'] = marketplace.id_mws
-
-                vals = {'backend_id':self.backend_id.id,
-                        'type':'Add_products_csv',
-                        'model':product.product_id._name,
-                        'identificator':product.product_id.id,
-                        'data':row,
-                        }
-                self.env['amazon.feed.tothrow'].create(vals)
+            product_binding_model = self.env['amazon.product.product']
+            delayable = product_binding_model.with_delay(priority=5, eta=datetime.now())
+            vals = {'method':'add_to_amazon_listing',
+                    'product_id':product.product_id.product_variant_id.id,
+                    'asin':product.asin,
+                    'marketplaces':self.marketplace_ids}
+            delayable.description = '%s.%s' % (self._name, 'add_to_amazon_listing()')
+            delayable.export_record(self.backend_id, vals)
 
         return {
             'type':'ir.actions.act_window',

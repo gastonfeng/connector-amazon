@@ -4,10 +4,9 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 import inspect
 import logging
+import os
 import urllib2
 import base64
-import xml.etree.ElementTree as ET
-from datetime import datetime
 
 from odoo.addons.component.core import Component
 from odoo.addons.connector.components.mapper import mapping
@@ -52,7 +51,8 @@ class ProductImportMapper(Component):
 
     @mapping
     def name(self, record):
-        return {'name':record['name'] if len(record['name']) < 159 else record['name'][:160]}
+        if not record.get('odoo_id'):
+            return {'name':record['name'] if len(record['name']) < 159 else record['name'][:160]}
 
     @mapping
     def backend_id(self, record):
@@ -128,13 +128,13 @@ class ProductImporter(Component):
     _apply_on = ['amazon.product.product']
 
     def _get_amazon_data(self):
-        _logger.info('Connector-amazon [%s] log: Get amazon data' % inspect.stack()[0][3])
+        _logger.info('connector_amazon [%s][%s] log: Get amazon data' % (os.getpid(), inspect.stack()[0][3]))
         """ Return the raw Amazon data for ``self.external_id`` """
         if self.amazon_record:
             return self.amazon_record
 
-        _logger.info('Connector-amazon [%s] log: There aren\'t data for the product %s we are going to get from Amazon' %
-                     (self.external_id, inspect.stack()[0][3]))
+        _logger.info('connector_amazon [%s][%s] log: There aren\'t data for the product %s we are going to get from Amazon' %
+                     (self.external_id, os.getpid(), inspect.stack()[0][3]))
         product = {'sku':self.external_id}
         default_market = self.backend_record._get_marketplace_default()
         product['marketplace_id'] = default_market.id
@@ -153,7 +153,7 @@ class ProductImporter(Component):
 
                 # Get ASIN from the first market with data
                 if not product.get('asin'):
-                    _logger.info('Connector-amazon [%s] log: Get amazon data to get ASIN' % inspect.stack()[0][3])
+                    _logger.info('connector_amazon [%s][%s] log: Get amazon data to get ASIN' % (os.getpid(), inspect.stack()[0][3]))
                     data_product = self.backend_adapter.get_products_for_id(arguments=[[self.external_id],
                                                                                        market.id_mws,
                                                                                        'SellerSKU'])
@@ -183,10 +183,6 @@ class ProductImporter(Component):
         # We link the products with the same amazon.sku and odoo.default_code
         if products:
             self.amazon_record['odoo_id'] = products[0].id
-        else:
-            products = self.env['product.product'].search([('default_code', '=like', self.amazon_record['sku'])])
-            if products:
-                self.amazon_record['odoo_id'] = products[0].product_tmpl_id.id
 
     def _get_binary_image(self, image_url):
         url = image_url.encode('utf8')
@@ -206,7 +202,8 @@ class ProductImporter(Component):
             return binary.read()
 
     def _write_brand(self, binding, product_data):
-        if product_data.get('brand'):
+        if binding.product_tmpl_id.product_brand_id and product_data.get('brand') and \
+                binding.product_tmpl_id.product_brand_id.name != product_data.get('brand'):
             brand = self.env['product.brand'].search([('name', '=', product_data['brand'])])
             if not brand:
                 result = self.env['product.brand'].create({'name':product_data['brand']})
@@ -216,8 +213,6 @@ class ProductImporter(Component):
 
             binding.product_tmpl_id.write({'product_brand_id':product_data.get('product_brand_id')})
             binding.write({'brand':product_data['brand']})
-        else:
-            _logger.error("Creating brand product for sku (%s) data (%s)", binding.sku, product_data)
 
     def _write_dimensions(self, binding, product_data):
 
@@ -293,18 +288,32 @@ class ProductImporter(Component):
         binding.write({'image':base64.b64encode(binary)})
 
     def _write_product_data(self, binding, marketplace):
+        """
+        We get the data from MWS and complete brand, dimenions and images of the product
+        :param binding:
+        :param marketplace:
+        :return:
+        """
         self.external_id = binding.external_id
-        data_product = self.backend_adapter.read(external_id=self.external_id, attributes=marketplace.id_mws)
-        self._write_brand(binding, data_product)
-        self._write_dimensions(binding, data_product)
-        if data_product.get('url_images'):
-            images = data_product['url_images']
-            while images:
-                image_url = images.pop()
-                binary = self._get_binary_image(image_url)
-                self._write_image_data(binding, binary)
+        no_has_brand = not binding.odoo_id.product_brand_id
+        no_has_dimensions = not (binding.odoo_id.height or binding.odoo_id.length or binding.odoo_id.width or binding.odoo_id.weight)
+        no_has_images = not (binding.odoo_id.image_ids)
+        if no_has_brand or no_has_dimensions or no_has_images:
+            data_product = self.backend_adapter.read(external_id=self.external_id, attributes=marketplace.id_mws)
 
-        return data_product
+        # If we have the brand we do not need to update this
+        if no_has_brand:
+            self._write_brand(binding, data_product)
+        # If we have the dimensions we do not need to update this
+        if no_has_dimensions:
+            self._write_dimensions(binding, data_product)
+        if no_has_images:
+            if data_product.get('url_images'):
+                images = data_product['url_images']
+                while images:
+                    image_url = images.pop()
+                    binary = self._get_binary_image(image_url)
+                    self._write_image_data(binding, binary)
 
     def _validate_product_type(self, data):
         """ Check if the product type is in the selection (so we can
@@ -470,13 +479,20 @@ class ProductLowestPriceImporter(Component):
         For instance from the products importer.
     """
 
-    _name = 'amazon.product.lowestprice.importer'
+    _name = 'amazon.product.offers.importer'
     _inherit = 'amazon.importer'
     _apply_on = ['amazon.product.product']
-    _usage = 'amazon.product.lowestprice'
+    _usage = 'amazon.product.offers.import'
 
-    def _insert_first_price(self, record, data):
+    def _get_first_offer(self, record, data):
+        """
+        UNUSED, THIS METHOD NEED TO BE REVISED
+        :param record:
+        :param data:
+        :return:
+        """
         lowest_price = float('inf')
+        rec_vals = {}
         for offer in data:
             vals = {'product_detail_id':record.id,
                     'id_seller':self.backend_record.seller if offer['my_offer'] == 'true' else '',
@@ -497,13 +513,16 @@ class ProductLowestPriceImporter(Component):
 
             result = self.env['amazon.product.offer'].create(vals)
             if result and offer['my_offer'] == 'true':
-                record.has_buybox = vals['is_buybox']
-                record.first_price_searched = True
+                rec_vals['has_buybox'] = vals['is_buybox']
+                rec_vals['first_price_searched'] = True
 
         if record.lowest_price != lowest_price:
-            record.lowest_price = lowest_price
+            rec_vals['lowest_price'] = lowest_price
 
-        record.has_lowest_price = True if record.lowest_price == record.price + record.price_ship else False
+        rec_vals['has_lowest_price'] = True if record.lowest_price == record.price + record.price_ship else False
+        if rec_vals:
+            rec_vals['first_offer_searched'] = True
+            record.write(rec_vals)
 
     def run(self, record):
         '''
@@ -516,163 +535,16 @@ class ProductLowestPriceImporter(Component):
             if record.marketplace_id and not record.first_price_searched:
                 data = self.backend_adapter.get_lowest_price([record.product_id.sku, record.marketplace_id.id_mws])
                 if data:
-                    self._insert_first_price(record, data)
+                    self._get_first_offer(record, data)
         except Exception as e:
             raise e
 
     def run_get_offers_changed(self):
-        self.backend_adapter.get_offers_changed()
+        return self.backend_adapter.get_offers_changed()
 
-    def _process_message(self, message):
-        messages = message.search([('id_message', '=', message.id_message)])
-        message_to_process = False
-        has_been_processed = False
-        if len(messages) > 1:
-            for mess in messages:
-                if mess.processed:
-                    has_been_processed = True
-                    message_to_process = True
-                if mess.id != message.id:
-                    mess.unlink()
-        if not has_been_processed and message.body:
-            offer_to_delete = None
-            root = ET.fromstring(message.body)
-            notification = root.find('NotificationPayload').find('AnyOfferChangedNotification')
-            offer_change_trigger = notification.find('OfferChangeTrigger')
-            if offer_change_trigger:
-                id_mws = offer_change_trigger.find('MarketplaceId').text if offer_change_trigger.find('MarketplaceId') != None else None
-                asin = offer_change_trigger.find('ASIN').text if offer_change_trigger.find('ASIN') != None else None
-                products = self.env['amazon.product.product.detail'].search([('product_id.asin', '=', asin), ('marketplace_id.id_mws', '=', id_mws)])
-                if products:
-                    for detail_prod in products:
-                        marketplace = detail_prod.marketplace_id
-                        # item_condition = offer_change_trigger.find('ItemCondition').text if offer_change_trigger.find('ItemCondition') != None else None
-                        time_change = offer_change_trigger.find('TimeOfOfferChange').text if offer_change_trigger.find('TimeOfOfferChange') != None else None
-                        time_change = datetime.strptime(time_change, "%Y-%m-%dT%H:%M:%S.%fZ")
-
-                        summary = notification.find('Summary')
-                        lowest_prices = summary.find('LowestPrices')
-                        buybox_prices = summary.find('BuyBoxPrices')
-                        if buybox_prices and buybox_prices.find('BuyBoxPrice'):
-                            aux = buybox_prices.find('BuyBoxPrice').find('LandedPrice')
-                            detail_prod.buybox_price = aux.find('Amount').text
-
-                        if lowest_prices and lowest_prices.find('LowestPrice'):
-                            low_price = float('inf')
-                            for prices in lowest_prices:
-                                if prices.find('LandedPrice'):
-                                    aux = prices.find('LandedPrice').find('Amount').text
-                                    if float(aux) < low_price:
-                                        low_price = float(aux)
-                            detail_prod.lowest_price = low_price
-
-                        new_offers = []
-                        for offer in root.iter('Offer'):
-                            new_offer = {}
-                            new_offer['id_seller'] = offer.find('SellerId').text
-                            new_offer['condition'] = offer.find('SubCondition').text
-                            listing_price = offer.find('ListingPrice')
-                            if listing_price:
-                                new_offer['price'] = listing_price.find('Amount').text
-                                new_offer['currency_price_id'] = self.env['res.currency'].search([('name', '=', listing_price.find('CurrencyCode').text)]).id
-                            shipping = offer.find('Shipping')
-                            if shipping:
-                                new_offer['price_ship'] = shipping.find('Amount').text
-                                new_offer['currency_ship_price_id'] = self.env['res.currency'].search([('name', '=', shipping.find('CurrencyCode').text)]).id
-
-                            # min_hours = None
-                            # max_hours = None
-                            # shipping_time = offer.find('ShippingTime')
-                            # if shipping_time:
-                            #    max_hours = offer.find('ShippingTime').attrib['maximumHours'] if offer.find('ShippingTime').attrib.get('maximumHours') else None
-                            #    min_hours = offer.find('ShippingTime').attrib['minimumHours'] if offer.find('ShippingTime').attrib.get('minimumHours') else None
-
-                            seller_feedback = offer.find('SellerFeedbackRating')
-                            if seller_feedback:
-                                new_offer['seller_feedback_rating'] = seller_feedback.find('SellerPositiveFeedbackRating').text
-                                new_offer['seller_feedback_count'] = seller_feedback.find('FeedbackCount').text
-
-                            new_offer['amazon_fulffilled'] = offer.find('IsFulfilledByAmazon').text == 'true' if offer.find(
-                                'IsFulfilledByAmazon').text else False
-                            new_offer['is_buybox'] = offer.find('IsBuyBoxWinner').text == 'true'
-
-                            ship_from = offer.find('ShipsDomestically')
-                            if ship_from and ship_from.text == 'true':
-                                new_offer['country_ship_id'] = marketplace.country_id.id
-                            else:
-                                ship_from = offer.find('ShipsFrom').find('Country').text if offer.find('ShipsFrom') and offer.find('ShipsFrom').find(
-                                    'Country') else None
-                                new_offer['country_ship_id'] = self.env['res.country'].search([('code', '=', ship_from)]).id
-
-                            is_prime = offer.find('PrimeInformation')
-                            if is_prime:
-                                is_prime = offer.find('PrimeInformation').find('IsPrime').text == 'true' if offer.find('PrimeInformation') and \
-                                                                                                            offer.find('PrimeInformation').find('IsPrime') and \
-                                                                                                            offer.find('PrimeInformation').find('IsPrime').text \
-                                    else None
-                                new_offer['is_prime'] = is_prime
-
-                            # We save the offer on historic register
-                            new_offers.append((0, 0, new_offer))
-
-                        # We save the offers on historic offer
-                        self.env['amazon.historic.product.offer'].create({'offer_date':time_change,
-                                                                          'product_detail_id':detail_prod.id,
-                                                                          'offer_ids':new_offers})
-
-                        update_detail_prod = False
-                        # If we haven't actually offers, we create it
-                        if not detail_prod.offer_ids:
-                            update_detail_prod = True
-                        # If the date of our offers is more late than date of change
-                        elif detail_prod.offer_ids and datetime.strptime(detail_prod.offer_ids[0].create_date, "%Y-%m-%d %H:%M:%S") < time_change:
-                            if offer_to_delete:
-                                offer_to_delete |= detail_prod.offer_ids
-                            else:
-                                offer_to_delete = detail_prod.offer_ids
-                            update_detail_prod = True
-
-                        if update_detail_prod:
-                            for offer in new_offers:
-                                # If it is our offer, we save the data on product
-                                if offer[2].get('id_seller') == detail_prod.product_id.backend_id.seller:
-                                    vals = {'price':offer[2].get('price'),
-                                            'price_ship':offer[2].get('price_ship'),
-                                            'has_buybox':offer[2].get('is_buybox'),
-                                            'has_lowest_price':offer[2].get('is_lower_price')}
-                                    if not detail_prod.first_price_searched:
-                                        vals['first_price_searched'] = True
-                            vals['offer_ids'] = new_offers
-                            detail_prod.write(vals)
-
-                    message_to_process = True
-
-            offer_to_delete.unlink()
-
-        return message_to_process
-
-    def run_process_messages_offers(self, backend):
-        env = self.env['amazon.config.sqs.message']
-        env._cr.execute(""" SELECT id
-                             FROM 
-                                amazon_config_sqs_message 
-                             WHERE create_date IN
-                                (SELECT DISTINCT create_date FROM amazon_config_sqs_message WHERE processed=False ORDER BY create_date ASC LIMIT %s)
-                                    """, [DEFAULT_ROUND_MESSAGES_TO_PROCESS])
-
-        messages = env._cr.dictfetchall()
-        rdset = None
-
-        for id_mes in messages:
-            message = env.browse(id_mes['id'])
-            if self._process_message(message):
-                if rdset:
-                    rdset |= message
-                else:
-                    rdset = message
-
-        if rdset:
-            rdset.write({'processed':True})
+    def run_offers_delete(self, offer_ids={}):
+        if offer_ids:
+            self.env['amazon.historic.product.offer'].browse(offer_ids).unlink()
 
 
 class ProductPriceImporter(Component):
@@ -687,7 +559,32 @@ class ProductPriceImporter(Component):
     _apply_on = ['amazon.product.product']
     _usage = 'amazon.product.price.import'
 
-    def run(self, binding):
+    def run_first_price(self, detail):
+        if not detail.first_price_searched:
+            prices = self.run_get_price(detail)
+            if prices:
+                vals = {}
+                price_unit = float(prices.get('price_unit') or 0.)
+                price_ship = float(prices.get('price_shipping') or 0.)
+                if price_unit != self.price or price_ship != self.price_ship:
+                    vals['price'] = price_unit
+                    vals['price_ship'] = price_ship
+                if prices.get('fee'):
+                    vals['percentage_fee'] = round(
+                        (prices['fee']['Amount'] * 100) / (self.price + self.price_ship or 0))
+                    vals['total_fee'] = prices['fee']['Final']
+                    vals['first_price_searched'] = True
+                if vals:
+                    detail.write(vals)
+                    return True
+            return False
+        return True
+
+    def run_first_offer(self, detail):
+        prices = self.backend_adapter.get_lowest_price([detail.sku, detail.marketplace_id.id_mws]) if detail.sku else None
+        return prices
+
+    def run_get_price(self, binding):
         prices = self.backend_adapter.get_my_price([binding.sku, binding.marketplace_id.id_mws]) if binding.sku else None
         return prices
 
@@ -705,6 +602,23 @@ class ProductDataImporter(Component):
     _usage = 'amazon.product.data.import'
 
     def run_products_for_id(self, ids, type_id, marketplace_mws):
-        _logger.info('Connector-amazon [%s] log: Get products with ean to export these to Amazon' % inspect.stack()[0][3])
+        _logger.info('connector_amazon [%s][%s] log: Get products with ean to export these to Amazon' % (os.getpid(), inspect.stack()[0][3]))
         products = self.backend_adapter.get_products_for_id(arguments=[ids, marketplace_mws, type_id])
+        return products
+
+
+class ProductSQSMessageImporter(Component):
+    """ Import data for a record.
+
+        Usually called from importers, in ``_after_import``.
+        For instance from the products importer.
+    """
+
+    _name = 'amazon.product.sqs.message.importer'
+    _inherit = 'amazon.importer'
+    _apply_on = ['amazon.product.product']
+    _usage = 'amazon.product.sqs.message.import'
+
+    def run(self):
+        self.backend_adapter.get_products_for_id(arguments=[ids, marketplace_mws, type_id])
         return products

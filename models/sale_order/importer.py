@@ -237,6 +237,11 @@ class SaleOrderImportMapper(Component):
     def total_tax_included(self, record):
         return {'total_included':True}
 
+    @mapping
+    def team_id(self, record):
+        if self.backend_record.team_id:
+            return {'team_id':self.backend_record.team_id.id}
+
     # partner_id, partner_invoice_id, partner_shipping_id
     # are done in the importer
 
@@ -280,7 +285,8 @@ class SaleOrderImporter(Component):
                 importer.amazon_record = self.amazon_record['partner']
                 if self.amazon_record.get('partner') and self.amazon_record['partner'].get('email'):
                     self._import_dependency(external_id=self.amazon_record['partner']['email'], binding_model='amazon.res.partner', importer=importer)
-                    self.amazon_record['partner_id'] = self.env['amazon.res.partner'].search([('email', '=', self.amazon_record['partner']['email'])]).id
+                    self.amazon_record['partner_id'] = self.env['amazon.res.partner'].search([('email', '=', self.amazon_record['partner']['email']),
+                                                                                              ('street', '=', self.amazon_record['partner']['street'])]).id
 
             # Check if the product is imported
             for line in self.amazon_record['lines']:
@@ -298,7 +304,8 @@ class SaleOrderImporter(Component):
         if not re.match(AMAZON_ORDER_ID_PATTERN, self.external_id):
             raise FailedJobError('The external_id validation failed %s %s', AMAZON_ORDER_ID_PATTERN, self.external_id)
         try:
-            if not data.get('date_order'):
+            # We need order_status_id to know what data we are going to reveive
+            if not data.get('date_order') or not data.get('order_status_id'):
                 return False
         except:
             return False
@@ -340,6 +347,9 @@ class SaleOrderImporter(Component):
 
         vals['number_items_shipped'] = data.get('number_items_shipped')
         vals['number_items_unshipped'] = data.get('number_items_unshipped')
+
+        if not binding.shipment_service_level_category:
+            vals['shipment_service_level_category'] = data.get('shipment_service_level_category')
 
         binding.write(vals)
         # If the order has been shipped we call to stock.picking.action_done()
@@ -479,3 +489,20 @@ class SaleOrderLineImportMapper(Component):
                        (product.percentage_fee or AMAZON_DEFAULT_PERCENTAGE_FEE)) / 100
 
                 return {'fee':fee}
+
+
+class SaleDataImporter(Component):
+    """ Import data for a record.
+
+        Usually called from importers, in ``_after_import``.
+        For instance from the products importer.
+    """
+
+    _name = 'amazon.sale.data.importer'
+    _inherit = 'amazon.importer'
+    _apply_on = ['amazon.sale.order']
+    _usage = 'amazon.sale.data.import'
+
+    def get_orders(self, ids):
+        orders = self.backend_adapter.get_orders(arguments=ids)
+        return orders

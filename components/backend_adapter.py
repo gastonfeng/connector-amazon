@@ -5,16 +5,21 @@
 # This project is based on connector-magneto, developed by Camptocamp SA
 
 import StringIO
+import boto3
 import logging
 import dateutil.parser
 import re
+from datetime import datetime, timedelta
 from lxml import etree
 
 import unicodecsv
+from odoo import api
 from odoo.fields import Datetime
 from odoo.addons.component.core import AbstractComponent
 from odoo.addons.queue_job.exception import FailedJobError, RetryableJobError
+from odoo.modules.registry import RegistryManager
 
+#from ..models.config.common import MAX_NUMBER_SQS_MESSAGES_TO_RECEIVE
 from ..mws.mws import MWSError
 
 _logger = logging.getLogger(__name__)
@@ -39,6 +44,7 @@ AMAZON_SUBMIT_REPORT_METHOD_DICT = {'submit_inventory_request':'_GET_MERCHANT_LI
 
 AMAZON_METHOD_LIST = ['get_inventory',
                       'get_sales',
+                      'get_order',
                       'get_products_for_id',
                       'list_items_from_order',
                       'get_category_product',
@@ -50,16 +56,17 @@ AMAZON_METHOD_LIST = ['get_inventory',
                       'amazon_product_product_read',
                       'submit_stock_update',
                       'submit_price_update',
-                      'submit_stock_price_handling_update',
                       'submit_add_inventory_request',
                       'submit_stock_price_update',
                       ]
 
 
+# noinspection Pylint
 class AmazonAPI(object):
 
     def __init__(self, backend):
         self._backend = backend
+        self._sqs = None
 
     def __enter__(self, *args, **kwargs):
         return self
@@ -76,18 +83,82 @@ class AmazonAPI(object):
                 return ''
         return ''
 
-    def _get_messages_of_sqs_account(self, sqs_account):
-        get_more_messages = sqs_account._get_last_messages()
-        if get_more_messages:
-            self._get_messages_of_sqs_account(sqs_account)
+    def _save_sqs_messages(self, messages, remove_messages=True):
+        ddbb_messages=[]
+        if messages:
+            for message in messages:
+                sqs_env = self._backend.env['amazon.config.sqs.message']
+                # We check if the message has been imported before
+                result = sqs_env.search_count([('id_message', '=', message['MessageId'])])
+                if not result:
+                    # If the message is new
+                    vals = {'id_message':message['MessageId'],
+                            'recept_handle':message['ReceiptHandle'],
+                            'body':message['Body'],
+                            'sqs_account_id':self._backend.sqs_account_id.id,
+                            'sqs_deleted':remove_messages}
+                    ddbb_messages.append(sqs_env.create(vals))
+                    # We remove the message from sqs
+
+                if remove_messages and result:
+                    self._sqs.delete_message(
+                        QueueUrl=self._backend.sqs_account_id.queue_url,
+                        ReceiptHandle=message['ReceiptHandle']
+                    )
+        return ddbb_messages
+
+    def _receive_sqs_messages(self, max_number_messages=None):
+        if not max_number_messages:
+            max_number_messages = 10
+
+        # Receive message from SQS queue
+        response = self._sqs.receive_message(
+            QueueUrl=self._backend.sqs_account_id.queue_url,
+            AttributeNames=[
+                'SentTimestamp'
+            ],
+            MaxNumberOfMessages=max_number_messages,
+            MessageAttributeNames=[
+                'All'
+            ],
+            VisibilityTimeout=0,
+            WaitTimeSeconds=0
+        )
+
+        return response.get('Messages')
+
+    def _get_messages_of_sqs_account(self):
+        if not self._sqs:
+            self._sqs = boto3.client('sqs',
+                                     aws_access_key_id=self._backend.sqs_account_id.access_key,
+                                     aws_secret_access_key=self._backend.sqs_account_id.secret_key,
+                                     region_name=self._backend.sqs_account_id.region
+                                     )
+
+        # Get the messages
+        messages = self._receive_sqs_messages()
+        # If number of messages recovered is the max (10) we are going to create a delayed job to recover more messages
+        if len(messages) == 10:
+            # We are going to create a new cursor to can throw the new job now
+            new_cr = RegistryManager.get(self._backend.env.cr.dbname).cursor()
+            env = api.Environment(new_cr, self._backend.env.uid, self._backend.env.context)
+            amazon_product = env['amazon.product.product']
+            delayable = amazon_product.with_delay(priority=7, eta=datetime.now())
+            delayable.description = '%s.%s' % ('AmazonAPI', 'receive_sqs_messages()')
+            delayable.import_changes_prices_record(self._backend, filters={})
+            new_cr.commit()
+            new_cr.close()
+
+        # Save the messages on database
+        ddbb_messages = self._save_sqs_messages(messages)
+
+        return (messages,ddbb_messages)
 
     def _get_offers_changed(self):
-        sqs_accounts = self._backend.env['amazon.config.sqs.account'].search([('backend_id', '=', self._backend.id)])
-        if not sqs_accounts:
+        if not self._backend.sqs_account_id:
             _logger.info('There aren\'t sqs accounts configured for this backend (%s)' % self._backend.name)
         else:
-            for sqs_account in sqs_accounts:
-                self._get_messages_of_sqs_account(sqs_account)
+            return self._get_messages_of_sqs_account()
         return
 
     def _save_feed(self, response, params, xml_csv):
@@ -198,7 +269,7 @@ class AmazonAPI(object):
             for product in dict_products[id_market].values():
                 message = etree.SubElement(top, 'Message')
                 messageID = etree.SubElement(message, 'MessageID')
-                messageID.text = int(i)
+                messageID.text = str(i)
 
                 operationType = etree.SubElement(message, 'OperationType')
                 operationType.text = 'Update'
@@ -240,6 +311,7 @@ class AmazonAPI(object):
         dict_products = [{'sku': 'D5-0BJZ-39B4', 'price': '84.80', 'Quantity': 4, 'id_mws':'A1RKKUPIHCS9HS', 'handling_time':2},
                          {'sku': 'CH-N74Z-DD0S', 'price': '24,45', 'Quantity': 5, 'id_mws':'A1RKKUPIHCS9HS', 'handling_time':4}]
         '''
+
         feed_ids = []
         for id_market in dict_products.keys():
 
@@ -281,6 +353,7 @@ class AmazonAPI(object):
                          {'sku': 'CH-N74Z-DD0S', 'product-id-type': 'ASIN', 'product-id': 'B44S70ERQA', 'item-condition': '11', 'price': '24,45', 'Quantity': 5, 'id_mws':'A1RKKUPIHCS9HS', 'handling_time':4}]
         '''
         feed_ids = []
+
         for id_market in dict_products.keys():
 
             titles = ('sku', 'product-id', 'product-id-type', 'price', 'minimum-seller-allowed-price', 'maximum-seller-allowed-price', 'item-condition',
@@ -324,11 +397,59 @@ class AmazonAPI(object):
                 data = data.join(product_data) + '\n'
                 csv = csv + data
 
-                response = feedsApi.submit_feed(feed=csv,
-                                                feed_type='_POST_FLAT_FILE_INVLOADER_DATA_',
-                                                marketplaceids=[id_market])
+            response = feedsApi.submit_feed(feed=csv,
+                                            feed_type='_POST_FLAT_FILE_INVLOADER_DATA_',
+                                            marketplaceids=[id_market])
 
-                feed_ids.append(self._save_feed(response=response, params=str(arguments), xml_csv=csv))
+            feed_ids.append(self._save_feed(response=response, params=str(arguments), xml_csv=csv))
+
+        return feed_ids
+
+    def _submit_confirm_shipment(self, arguments):
+        """
+                Send the csv file as it is described on https://s3.amazonaws.com/seller-templates/ff/eu/es/Flat.File.PriceInventory.es.xls
+                :param arguments:
+                :return:
+                """
+        feedsApi = Feeds(backend=self._backend)
+
+        dict_orders = arguments
+
+        '''
+        Dict structure
+        dict_orders = [
+        {'order-id': '403-9196460-3519523', 'order-item-id': '03832405608129', 'quantity': 1, 'ship-date':'2018-10-07', 'carrier-code':, 'carrier-name':'MRW', 'tracking-number':'051592433226', 'ship-method':'ecommerce'},
+        {'order-id': '405-9196460-3519523', 'order-item-id': '02323408002683', 'quantity': 1, 'ship-date':'2018-10-07', 'carrier-code':, 'carrier-name':'Post NL', 'tracking-number':'LX904813245NL', 'ship-method':''},
+                      ]
+        '''
+
+        feed_ids = []
+        for id_market in dict_orders.keys():
+
+            titles = (['order-id', 'order-item-id', 'quantity', 'ship-date', 'carrier-code', 'carrier-name', 'tracking-number', 'ship-method'])
+            csv = '\t'
+            csv = csv.join(titles) + '\n'
+
+            for sale in dict_orders[id_market].values():
+                data = '\t'
+                product_data = (
+                    sale.get('order-id'),
+                    sale.get('order-item-id'),
+                    sale.get('quantity') or '1',
+                    sale.get('ship-date'),
+                    sale.get('carrier-code') or '',
+                    sale.get('carrier-name') or '',
+                    sale.get('tracking-number') or '',
+                    sale.get('ship-method') or '',
+                )
+                data = data.join(product_data) + '\n'
+                csv = csv + data
+
+            response = feedsApi.submit_feed(feed=csv,
+                                            feed_type='_POST_ORDER_FULFILLMENT_DATA_',
+                                            marketplaceids=[id_market])
+
+            feed_ids.append(self._save_feed(response=response, params=str(arguments), xml_csv=csv))
 
         return feed_ids
 
@@ -445,7 +566,6 @@ class AmazonAPI(object):
         return
 
     def _get_main_data_product(self, sku, marketplace_id, product_api=None, product={}):
-
         if not product_api:
             product_api = Products(backend=self._backend)
 
@@ -584,9 +704,12 @@ class AmazonAPI(object):
 
         return product
 
-    def _get_my_estimate_fee(self, marketplace_id, type_sku_asin, id_type, price, currency, ship_price, currency_ship, product_api=None):
+    def _get_my_estimate_fee(self, marketplace_id, type_sku_asin, id_type, price, currency, ship_price=0, currency_ship=None, product_api=None):
         if not product_api:
             product_api = Products(backend=self._backend)
+
+        if not currency_ship:
+            currency_ship = currency
 
         response = product_api.get_my_fee_estimate(marketplaceids=[marketplace_id],
                                                    types=[type_sku_asin],
@@ -659,7 +782,7 @@ class AmazonAPI(object):
         order['is_prime'] = order_dict.getvalue('IsPrime')
         order['is_premium'] = order_dict.getvalue('IsPremiumOrder')
         order['is_business'] = order_dict.getvalue('IsBusinessOrder')
-        order['shipment_service_level_category'] = order_dict.getvalue('ShipmentServiceLevelCategory')
+        order['ship_service_level'] = order_dict.getvalue('ShipmentServiceLevelCategory')
         order['FulfillmentChannel'] = order_dict.getvalue('FulfillmentChannel')
         order['number_items_shipped'] = order_dict.getvalue('NumberOfItemsShipped')
         order['number_items_unshipped'] = order_dict.getvalue('NumberOfItemsUnshipped')
@@ -927,6 +1050,56 @@ class AmazonAPI(object):
                 return (response.response.encoding, reader)
             return
 
+    def _get_feed_response(self, feed_id):
+        feeds_api = Feeds(backend=self._backend)
+
+        try:
+            response = feeds_api.get_feed_submission_result(feedid=feed_id)
+            if response and response.response and response.response.status_code == 200:
+                return response
+        except Exception as e:
+            _logger.error("feeds_api(%s) failed with feed_ids %s", '_get_feed_result ', feed_id)
+            raise e
+
+    def _get_result_feed(self, feed_id, headers):
+        try:
+            assert feed_id
+        except AssertionError, e:
+            _logger.error("feed_api('%s') failed", '_get_result_feed.feed_id')
+            raise e
+
+        try:
+            assert headers
+        except AssertionError, e:
+            _logger.error("feed_api('%s') failed", '_get_result_feed.headers')
+            raise e
+
+        response = self._get_feed_response(feed_id=feed_id)
+        assert response
+        if response:
+            file = StringIO.StringIO()
+            file.write(response.response.content)
+            file.seek(0)
+            reader = unicodecsv.DictReader(
+                file, fieldnames=headers,
+                delimiter='\t', quoting=False,
+                encoding=response.response.encoding)
+            reader.next()  # we pass the file header
+            return (response.response.encoding, reader)
+        return
+
+    def _get_headers_add_products_csv_result(self):
+        return [
+            'original-record-number',
+            'sku',
+            'error-code',
+            'error-type',
+            'error-message',
+        ]
+
+    def _get_result_add_products_csv(self, feed_id):
+        self._get_result_feed(feed_id=feed_id, headers=self._get_headers_add_products_csv_result())
+
     def _check_type_identifier(self, identifier):
         '''
         Method that return a UPC, EAN or None based on type of identifier parameter
@@ -966,19 +1139,6 @@ class AmazonAPI(object):
                 continue
 
             data_prod_market = self._get_product_market_data_line(encoding=encoding, marketplace=marketplace, line=line)
-            try:
-                fee = self._get_my_estimate_fee(marketplace_id=marketplace.id_mws,
-                                                type_sku_asin='SellerSKU',
-                                                id_type=data_prod_market['sku'],
-                                                price=data_prod_market['price_unit'],
-                                                currency=data_prod_market['currency_price_unit'])
-                if fee:
-                    data_prod_market['fee'] = fee
-            except Exception as e:
-                _logger.error("Recovering price's product from product_api (%s) failed with sku %s and marketplace %s",
-                              'extract_info_product',
-                              data_prod_market['sku'],
-                              marketplace.name)
             name = data_prod_market['title']
 
             # If the product doesn't exist we get all data

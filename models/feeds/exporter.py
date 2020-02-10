@@ -22,7 +22,9 @@ class FeedBatchExporter(Component):
         arguments = filters['arguments']
         assert method
         assert arguments
-        if method in ('submit_stock_update', 'submit_add_inventory_request', 'submit_stock_price_update'):
+        if method in ('submit_stock_update', 'submit_price_update', 'submit_add_inventory_request', 'submit_stock_price_update'):
             result = self.backend_adapter.submit_feed(feed_name=method, arguments=arguments)
+        elif method in ('get_feed_submission_result'):
+            result = self.backend_adapter.get_feed(feed_name=method, arguments=arguments)
 
         return result

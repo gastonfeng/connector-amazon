@@ -72,11 +72,15 @@ class WizardImportOrder(models.TransientModel):
         if not id_order:
             raise exceptions.except_orm('Error', 'The order id is empty')
         if not re.match(AMAZON_ORDER_ID_PATTERN, id_order):
-            raise exceptions.except_orm('Error', 'The order id validation failed %s %s' % AMAZON_ORDER_ID_PATTERN, id_order)
+            raise exceptions.except_orm('Error', 'The order id validation failed %s %s' % (AMAZON_ORDER_ID_PATTERN, id_order))
 
     @api.multi
     def import_order(self):
         backend_id = self._context.get('active_ids', [])
+        return self.import_order_from_backend(backend=backend_id)
+
+    def import_order_from_backend(self, backend):
+        backend_id = backend
         try:
             if backend_id:
                 backend = self.env['amazon.backend'].browse(backend_id)
@@ -87,8 +91,7 @@ class WizardImportOrder(models.TransientModel):
                     user = self.env['res.users'].browse(self.env.uid)
                 if user != self.env.user:
                     sale_binding_model = sale_binding_model.sudo(user)
-                sale_binding_model.import_record(backend, external_id=self.id_order)
-
+                return sale_binding_model.import_record(backend, external_id=self.id_order)
         except Exception, e:
             raise e
 

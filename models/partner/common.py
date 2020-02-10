@@ -24,8 +24,6 @@ class AmazonResPartner(models.Model):
                               required=True,
                               ondelete='restrict')
 
-    id_partner = fields.Char()
-
     alias = fields.Char()
 
     @job(default_channel='root.amazon')
@@ -49,8 +47,8 @@ class ResPartner(models.Model):
         inverse_name='odoo_id',
         string='Amazon Bindings',
     )
-    get_supplier_stock = fields.Selection(selection=[('1', 'Yes'),
-                                                     ('0', 'No'), ])
+    get_supplier_stock = fields.Selection(string='Get supplier stock?', selection=[('1', 'Yes'), ('0', 'No'), ])
+    change_prices = fields.Selection(string='Change prices', selection=[('1', 'Yes'), ('0', 'No'), ])
 
     automatic_export_products = fields.Boolean('Automatic export new products to Amazon?', default=False)
     backend_id = fields.Many2one('amazon.backend')

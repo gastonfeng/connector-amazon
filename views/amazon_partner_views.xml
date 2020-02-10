@@ -8,7 +8,6 @@
 				<tree string="Partners" create="false">
 					<field name="odoo_id" string="Partner on odoo" />
                     <field name="alias" string="Alias" />
-                    <field name="id_partner" string="Id Partner" />
 				</tree>
 			</field>
 		</record>
@@ -20,7 +19,6 @@
             <form>
                 <group><field name="odoo_id" string="Partner on odoo" /></group>
                 <group><field name="alias" string="Alias" /></group>
-                <group><field name="id_partner" string="Id Partner" /></group>
             </form>
         </field>
     </record>

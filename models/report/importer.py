@@ -37,10 +37,11 @@ class ReportBatchImporter(Component):
                     product_binding_model = self.env['amazon.product.product']
                     for product in products.iteritems():
                         # We check if there are other tasks with the same data
-                        if not self.backend_record.check_same_import_jobs(model=product_binding_model._name,
-                                                                          key=product[0] if isinstance(product, (tuple, list)) else product):
-                            delayable = product_binding_model.with_delay(priority=5, eta=datetime.now())
-                            delayable.import_record(self.backend_record, product)
+                        # if not self.backend_record.check_same_import_jobs(model=product_binding_model._name,
+                        #                                                  key=product[0] if isinstance(product, (tuple, list)) else product):
+                        delayable = product_binding_model.with_delay(priority=5, eta=datetime.now())
+                        delayable.description = '%s.impor_record(%s)' % (product_binding_model._name, product[0])
+                        delayable.import_record(self.backend_record, product)
                 else:
                     _logger.info('search for amazon products %s has returned nothing',
                                  filters, products.keys())

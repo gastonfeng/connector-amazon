@@ -77,12 +77,15 @@ class AmazonBinding(models.AbstractModel):
 
     @job(default_channel='root.amazon')
     @api.multi
-    def export_record(self, fields=None):
+    def export_record(self, backend, internal_id):
         """ Export a record on Amazon """
-        self.ensure_one()
-        with self.backend_id.work_on(self._name) as work:
+        exception = None
+        with backend.work_on(self._name) as work:
             exporter = work.component(usage='record.exporter')
             try:
-                return exporter.run(self, fields)
+                return exporter.run(internal_id)
             except Exception as e:
-                return e
+                exception = e
+
+        if exception:
+            raise exception

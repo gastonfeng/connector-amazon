@@ -4,6 +4,7 @@
 import ast
 import inspect
 import logging
+import os
 from datetime import datetime, timedelta
 
 from decorator import contextmanager
@@ -11,8 +12,9 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from odoo.addons.connector.checkpoint import checkpoint
 
-from odoo.addons.queue_job.job import STARTED, ENQUEUED, PENDING
 from ...components.backend_adapter import AmazonAPI
+from odoo.addons.queue_job.job import STARTED, ENQUEUED, PENDING
+from ..config.common import AMAZON_NUMBER_MESSAGES_CHANGE_PRICE_RECOVER
 
 _logger = logging.getLogger(__name__)
 
@@ -101,14 +103,15 @@ class AmazonBackend(models.Model):
                                             string='Shipping Templates', )
 
     # Min and max margin stablished for the calculation of the price on product and product price details if these do not be informed
-    change_prices = fields.Boolean('Change the prices', default=False)
+    change_prices = fields.Selection(string='Change prices', selection=[('0', 'No'), ('1', 'Yes'), ])
     min_margin = fields.Float('Minimal margin', default=None)
-    max_margin = fields.Float('Minimal margin', default=None)
+    max_margin = fields.Float('Maximal margin', default=None)
     units_to_change = fields.Float(digits=(3, 2), default=0.01)
     type_unit_to_change = fields.Selection(selection=[('price', 'Price (€)'),
                                                       ('percentage', 'Percentage (%)')],
                                            string='Type of unit',
                                            default='price')
+    force_change_price_from_supplier = fields.Char('Force change price when there is a change on price supplier')
     sqs_account_id = fields.Many2one('amazon.config.sqs.account', 'SQS account')
 
     _sql_constraints = [
@@ -193,9 +196,9 @@ class AmazonBackend(models.Model):
                 yield work
 
     @api.multi
-    def _import_export_product_product(self):
+    def _import_product_product(self):
         for backend in self:
-            _logger.info('Report is going to generated for %s at %s' % backend.name, datetime.now())
+            _logger.info('Report is going to generated for %s' % backend.name)
             user = backend.warehouse_id.company_id.user_tech_id
             if not user:
                 user = self.env['res.users'].browse(self.env.uid)
@@ -211,23 +214,26 @@ class AmazonBackend(models.Model):
                 delayable = report_binding_model.with_delay(priority=1, eta=datetime.now() + timedelta(minutes=10))
                 filters = {'method':'get_inventory'}
                 filters['report_id'] = [report_id['report_ids']]  # Send a list for getattr call
+                delayable.description = 'Generate inventory report to: %s' % backend.name
                 delayable.import_batch(backend, filters=filters)
 
-            _logger.info('Report has been generated for %s at %s' % backend.name, datetime.now())
+            _logger.info('Report has been generated for %s' % backend.name)
 
         _logger.info('Report is done')
-        sup_products = self.env['product.supplierinfo'].search([('name.supplier', '=', True),
-                                                                ('name.automatic_export_products', '=', True),
-                                                                ('product_id.amazon_bind_ids', '=', False)])
-
-        for sup_product in sup_products:
-            _logger.info('Report has been generated for %s at %s' % backend.name, datetime.now())
-            sup_product.export_products_from_supplierinfo()
 
         # On Amazon we haven't a modified date on products and we need import all inventory
         # To import this, we need throw a report request, when this had been generated, we import all the product data
         # We are putting 5 minutes to launch the delayable job
         return True
+
+    @api.multi
+    def _export_product_product(self):
+        sup_products = self.env['product.supplierinfo'].search([('name.supplier', '=', True),
+                                                                ('name.automatic_export_products', '=', True),
+                                                                ('product_id.amazon_bind_ids', '=', False)])
+
+        for sup_product in sup_products:
+            sup_product.export_products_from_supplierinfo()
 
     @api.multi
     def _import_sale_orders(self,
@@ -263,7 +269,7 @@ class AmazonBackend(models.Model):
                 report_id = report_binding_model.import_batch(backend, filters=filters)
 
                 if report_id:
-                    delayable = report_binding_model.with_delay(priority=4, eta=datetime.now() + timedelta(minutes=5))
+                    delayable = report_binding_model.with_delay(priority=3, eta=datetime.now() + timedelta(minutes=5))
                     filters = {'method':'get_sales'}
                     filters['report_id'] = [report_id['report_ids']]
                     delayable.import_batch(backend, filters=filters)
@@ -317,8 +323,6 @@ class AmazonBackend(models.Model):
             product_binding_model = self.env['amazon.product.product']
             if user != self.env.user:
                 product_binding_model = product_binding_model.sudo(user)
-            # We are going to import the initial prices, fees and prices changes
-            product_binding_model.import_record_details(backend)
             # We are going to export the stock and prices changes
             product_binding_model.export_batch(backend)
 
@@ -342,12 +346,40 @@ class AmazonBackend(models.Model):
             if user != self.env.user:
                 product_binding_model = product_binding_model.sudo(user)
             # We are going to import the initial prices, fees and prices changes
-            product_binding_model.import_changesex_prices_record(backend)
+            product_binding_model.import_changes_prices_record(backend)
+
+    def _get_initial_prices_and_fees(self):
+        backends = self.env['amazon.backend'].search([])
+        product_importer = self.env['amazon.product.product']
+        for backend in backends:
+            product_importer.get_products_initial_prices_and_fees(backend=backend)
+
+    def _throw_delayed_jobs_for_price_changes(self):
+        backends = self.env['amazon.backend'].search([('sqs_account_id', '!=', False)])
+        for backend in backends:
+
+            number_messages = self.env['amazon.product.product.detail'].search_count([('product_id.backend_id', '=', backend.id)])
+            if number_messages > AMAZON_NUMBER_MESSAGES_CHANGE_PRICE_RECOVER:
+                number_messages = AMAZON_NUMBER_MESSAGES_CHANGE_PRICE_RECOVER
+            messages = self.env['amazon.config.sqs.message'].search([('sqs_account_id.backend_id', '=', backend.id), ('processed', '=', False)],
+                                                                    order='create_date asc',
+                                                                    limit=number_messages)
+            # limit=10)
+            product_binding_model = self.env['amazon.product.product']
+
+            i = 0
+            for message in messages:
+                print 'Message number:' + str(i) + ' message:' + str(message.id) + ' date: ' + datetime.now().isoformat()
+                i += 1
+                delayable = product_binding_model.with_delay(priority=7, eta=datetime.now())
+                filters = {'method':'process_price_message', 'message':message.id}
+                delayable.description = '%s.%s' % (self._name, 'process_price_message()')
+                delayable.export_record(backend, filters)
 
     @api.multi
     def _throw_feeds(self):
         for backend in self:
-            _logger.info('Connector-amazon [%s] log: Throw feeds init with %s backend' % (inspect.stack()[0][3], backend.name))
+            _logger.info('connector_amazon [%s][%s] log: Throw feeds init with %s backend' % (os.getpid(), inspect.stack()[0][3], backend.name))
             user = backend.warehouse_id.company_id.user_tech_id
             if not user:
                 user = self.env['res.users'].browse(self.env.uid)
@@ -400,10 +432,6 @@ class AmazonBackend(models.Model):
                         add_products_to_inventory[element['id_mws']].pop(element['sku'])
                         add_products_to_inventory[element['id_mws']][element['sku']] = element
 
-            _logger.info('Connector-amazon [%s] log: Update throw feeds to launched with %s backend' % (inspect.stack()[0][3], backend.name))
-            feeds_to_throw.write({'launched':True, 'date_launched':datetime.now().isoformat(sep=' ')})
-            _logger.info('Connector-amazon [%s] log: Finish update throw feeds to launched with %s backend' % (inspect.stack()[0][3], backend.name))
-
             with backend.work_on(self._name) as work:
                 if data_update_stock:
                     exporter_stock = work.component(model_name='amazon.product.product', usage='amazon.product.stock.export')
@@ -414,8 +442,8 @@ class AmazonBackend(models.Model):
                     exporter_stock_price.run([data_update_stock_price])
 
                 if add_products_to_inventory:
-                    exporter_product = work.component(model_name='amazon.product.product', usage='amazon.product.export')
-                    ids = exporter_product.run([add_products_to_inventory])
+                    exporter_product = work.component(model_name='amazon.product.product', usage='amazon.product.inventory.export')
+                    ids = exporter_product.run(add_products_to_inventory)
                     if not ids:
                         raise UserError(_('An error has been produced'))
 
@@ -428,6 +456,8 @@ class AmazonBackend(models.Model):
                     delayable = feed.with_delay(priority=1, eta=datetime.now() + timedelta(minutes=15))
                     filters = {'method':'analize_product_exports', 'feed_ids':ids, 'products':add_products_to_inventory, 'backend':backend}
                     delayable.import_batch(backend, filters=filters)
+
+            feeds_to_throw.write({'launched': True, 'date_launched': datetime.now().isoformat(sep=' ')})
 
     @api.model
     def _amazon_backend(self, callback, domain=None):
@@ -443,8 +473,12 @@ class AmazonBackend(models.Model):
         self._amazon_backend('_import_updated_sales', domain=domain)
 
     @api.model
-    def _scheduler_import_export_product_product(self, domain=None):
-        self._amazon_backend('_import_export_product_product', domain=domain)
+    def _scheduler_import_product_product(self, domain=None):
+        self._amazon_backend('_import_product_product', domain=domain)
+
+    @api.model
+    def _scheduler_export_product_product(self, domain=None):
+        self._amazon_backend('_export_product_product', domain=domain)
 
     @api.model
     def _scheduler_update_product_prices_stock_qty(self, domain=None):
@@ -456,8 +490,32 @@ class AmazonBackend(models.Model):
 
     @api.model
     def _scheduler_get_price_changes(self, domain=None):
+        """
+        Get messages while 60 seconds from sqs and save in our database
+        :param domain:
+        :return:
+        """
         self._amazon_backend('_get_price_changes', domain=domain)
+
+    @api.model
+    def _scheduler_throw_jobs_for_price_changes(self, domain=None):
+        """
+        Get messages from our database to process these
+        We are going to create a delayed job to process every message in a alone transaction
+        :param domain:
+        :return:
+        """
+        self._amazon_backend('_throw_delayed_jobs_for_price_changes', domain=domain)
 
     @api.model
     def _scheduler_throw_feeds(self, domain=None):
         self._amazon_backend('_throw_feeds', domain=domain)
+
+    @api.model
+    def _scheduler_get_initial_prices_and_fees(self, domain=None):
+        """
+        Get messages of change prices from our database and throw the jobs to process the messages
+        :param domain:
+        :return:
+        """
+        self._amazon_backend('_get_initial_prices_and_fees', domain=domain)

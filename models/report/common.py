@@ -41,3 +41,19 @@ class AmazonReportAdapter(Component):
         except AssertionError:
             _logger.error('There aren\'t (%s) parameters for %s', 'get_report')
             raise
+
+
+class AmazonReportProductToCreate(models.Model):
+    _name = 'amazon.report.product.to.create'
+
+    product_id = fields.Many2one('product.template')
+    name = fields.Char('name', related='product_id.name')
+    barcode = fields.Char('barcode', related='product_id.barcode')
+    category_on_amazon = fields.Char()
+
+
+class AmazonReportProductRankingSales(models.Model):
+    _name = 'amazon.report.product.ranking.sales'
+
+    product_id = fields.Many2one('product.template')
+    ranking_sales = fields.Char()

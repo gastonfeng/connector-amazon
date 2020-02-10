@@ -8,11 +8,20 @@
             <field name="priority">36</field>
             <!--field name="groups_id" eval="[(4, ref('base.group_multi_currency'))]"/-->
             <field name="arch" type="xml">
-                <group name="purchase" position="inside">
-                    <field name="get_supplier_stock" attrs="{'invisible': [('supplier', '=', False)]}"/>
-                    <field name="automatic_export_products" attrs="{'invisible': [('supplier', '=', False)]}"/>
-                    <field name="backend_id" attrs="{'invisible':[('supplier','=',False),('automatic_export_products','=',False)], 'required':[('automatic_export_products','=',True)]}"/>
-                </group>
+                <page name="sales_purchases" position="after">
+                    <page string="Amazon" name="Amazon" attrs="{'invisible': [('supplier', '=', False),('is_company','=',False),('parent_id','!=',False)]}" groups="sales_team.group_sale_manager">
+                        <group name="Amazon">
+                            <field name="get_supplier_stock" attrs="{'invisible': [('supplier', '=', False)]}"/>
+                            <field name="automatic_export_products" attrs="{'invisible': [('supplier', '=', False)]}"/>
+                            <field name="backend_id" attrs="{'invisible':[('supplier','=',False),('automatic_export_products','=',False)], 'required':[('automatic_export_products','=',True)]}"/>
+                            <group><button string="Set margins"
+                                type="action"
+                                name="%(connector_amazon.action_view_wizard_set_margins)d"
+                                class="oe_highlight"/>
+                    </group>
+                        </group>
+                    </page>
+                </page>
             </field>
     </record>
 

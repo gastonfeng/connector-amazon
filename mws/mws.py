@@ -623,8 +623,6 @@ class Sellers(MWS):
 
 
 #### Fulfillment APIs ####
-
-
 class InboundShipments(MWS):
     URI = "/FulfillmentInboundShipment/2010-10-01"
     VERSION = '2010-10-01'

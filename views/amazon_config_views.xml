@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Config settings -->
+    <record id="action_amazon_configuration" model="ir.actions.act_window">
+        <field name="name">Amazon Configuration Settings</field>
+        <field name="res_model">amazon.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+    </record>
+
     <!-- Marketplace -->
     <record id="view_amazon_marketplace_tree" model="ir.ui.view">
         <field name="name">Amazon marketplaces</field>
@@ -11,6 +19,7 @@
                 <field name="id_mws"/>
                 <field name="country_id"/>
                 <field name="lang_id"/>
+                <field name="decimal_currency_separator"/>
             </tree>
         </field>
     </record>
@@ -24,6 +33,7 @@
                 <group><field name="id_mws"/></group>
                 <group><field name="country_id"/></group>
                 <group><field name="lang_id"/></group>
+                <group><field name="decimal_currency_separator"/></group>
             </form>
         </field>
     </record>
@@ -111,6 +121,25 @@
         <field name="view_type">form</field>
         <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_amazon_sqs_account_tree"/>
+    </record>
+
+    <record id="view_amazon_product_brand_ban_tree" model="ir.ui.view">
+        <field name="name">Amazon product brand ban</field>
+        <field name="model">amazon.brand.ban</field>
+        <field name="arch" type="xml">
+            <tree string="Amazon product brand ban" editable="bottom">
+                <field name="backend_id"/>
+                <field name="brand_ban"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_amazon_brand_ban" model="ir.actions.act_window">
+        <field name="name">Product Brand Ban</field>
+        <field name="res_model">amazon.brand.ban</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_amazon_product_brand_ban_tree"/>
     </record>
 
 </odoo>

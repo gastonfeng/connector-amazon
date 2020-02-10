@@ -20,6 +20,7 @@ FEED_TYPES = {'_POST_PRODUCT_DATA_':'_POST_PRODUCT_DATA_',
               'Add_products_csv':'_POST_FLAT_FILE_INVLOADER_DATA_',
               '_POST_FLAT_FILE_LISTINGS_DATA_':'_POST_FLAT_FILE_LISTINGS_DATA_',
               'Update_stock_price':'_POST_FLAT_FILE_PRICEANDQUANTITYONLY_UPDATE_DATA_',
+              'Confirm_shipment':'_POST_ORDER_FULFILLMENT_DATA_',
               }
 
 FEED_STATUS = {'_AWAITING_ASYNCHRONOUS_REPLY_':'_AWAITING_ASYNCHRONOUS_REPLY_',
@@ -99,4 +100,8 @@ class AmazonFeedAdapter(Component):
 
     @api.multi
     def submit_feed(self, feed_name, arguments):
+        return self._call(method=feed_name, arguments=arguments)
+
+    @api.multi
+    def get_feed(self, feed_name, arguments):
         return self._call(method=feed_name, arguments=arguments)

@@ -140,5 +140,13 @@
             <field name="max_request_quota_units">1</field>
             <field name="units_of_mesaure_quota">hor</field>
         </record>
+        <record id="amazon_request_list_matching_products" model='amazon.control.request'>
+            <field name="request_name">ListMatchingProducts</field>
+            <field name="max_quota">20</field>
+			<field name="restore_rate">60</field>
+            <field name="max_request_quota_time">60</field>
+            <field name="max_request_quota_units">1</field>
+            <field name="units_of_mesaure_quota">hor</field>
+        </record>
     </data>
 </odoo>

@@ -137,6 +137,7 @@ class PartnerImportMapper(Component):
         with the same email """
         partner = self.env['res.partner'].search(
             [('email', '=', record['email']),
+             ('zip', '=', record['zip']),
              ('customer', '=', True),
              '|',
              ('is_company', '=', True),

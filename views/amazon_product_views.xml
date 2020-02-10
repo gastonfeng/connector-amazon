@@ -2,8 +2,20 @@
 <odoo>
 
     <!-- PRODUCTS -->
+    <record id="view_amazon_product_product_search" model="ir.ui.view">
+        <field name="name">amazon.product.product.search</field>
+        <field name="model">amazon.product.product</field>
+        <field name="arch" type="xml">
+            <search string="Search Amazon Products">
+                <field name="sku"/>
+                <field name="asin"/>
+                <field name="odoo_id" string="Odoo product"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_amazon_product_tree" model="ir.ui.view">
-        <field name="name">Amazon product</field>
+        <field name="name">amazon.product.product.tree</field>
         <field name="model">amazon.product.product</field>
         <field name="arch" type="xml">
             <tree string="Amazon Product">
@@ -26,6 +38,7 @@
         <field name="model">amazon.product.product</field>
         <field name="arch" type="xml">
             <form>
+                <group><field name="backend_name"/></group>
                 <group><field name="odoo_id"/></group>
                 <group><field name="asin"/></group>
                 <group><field name="sku"/></group>
@@ -86,20 +99,24 @@
         <field name="name">Amazon product marketplace data</field>
         <field name="model">amazon.product.product.detail</field>
         <field name="arch" type="xml">
-            <tree string="Amazon Marketplace Product Data">
+            <tree string="Amazon Marketplace Product Data" editable="bottom">
                 <field name="title"/>
                 <field name="price"/>
                 <field name="price_ship"/>
+                <field name="total_price"/>
                 <field name="currency_price"/>
-                <field name="lowest_price"/>
-                <field name="has_buybox"/>
-                <field name="has_lowest_price"/>
-                <field name="marketplace_id"/>
-                <field name="status"/>
+                <field name="change_prices" string="Automatic change price"/>
+                <field name="margin_amount" readonly="1" force_save="1"/>
+                <field name="margin_percentage" readonly="0"/>
+                <field name="has_lowest_price" readonly="1"/>
+                <field name="lowest_price" readonly="1"/>
+                <field name="has_buybox" readonly="1"/>
+                <field name="buybox_price" readonly="1"/>
+                <field name="marketplace_id" readonly="1"/>
+                <field name="status" readonly="1"/>
                 <field name="stock"/>
-                <field name="category_id"/>
-                <field name="merchant_shipping_group"/>
-                <field name="percentage_fee"/>
+                <field name="merchant_shipping_group" readonly="1"/>
+                <field name="percentage_fee" readonly="1"/>
             </tree>
         </field>
     </record>
@@ -117,11 +134,13 @@
         <field name="model">amazon.product.offer</field>
         <field name="arch" type="xml">
             <tree string="Amazon Product Offer">
+                <field name="is_our_offer"/>
                 <field name="id_seller"/>
                 <field name="price"/>
                 <field name="price_ship"/>
                 <field name="currency_price_id"/>
                 <field name="is_buybox"/>
+                <field name="is_prime"/>
                 <field name="seller_feedback_rating"/>
             </tree>
         </field>

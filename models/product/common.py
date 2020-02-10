@@ -3,9 +3,10 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 import inspect
 import logging
+import os
 import random
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from odoo import models, fields, api, _
 from odoo.addons.component.core import Component
@@ -13,7 +14,7 @@ from odoo.addons.queue_job.exception import RetryableJobError
 from odoo.addons.queue_job.job import job
 from odoo.exceptions import UserError
 
-from ...models.config.common import AMAZON_DEFAULT_PERCENTAGE_FEE, AMAZON_DEFAULT_PERCENTAGE_MARGIN
+from ...models.config.common import AMAZON_DEFAULT_PERCENTAGE_FEE
 
 _logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class AmazonProductProduct(models.Model):
     _inherits = {'product.product':'odoo_id'}
     _description = 'Amazon Product'
 
+    backend_name = fields.Char('Backend name', related='backend_id.name')
     odoo_id = fields.Many2one(comodel_name='product.product',
                               string='Product',
                               required=True,
@@ -62,9 +64,9 @@ class AmazonProductProduct(models.Model):
     # Min and max margin stablished for the calculation of the price on product and product price details if these do not be informed
     # If these fields do not be informed, gets the margin limits of backend
     stock_sync = fields.Boolean('Stock shyncronization', default=True)
-    change_prices = fields.Boolean('Change the prices', default=True)
+    change_prices = fields.Selection(string='Change prices', selection=[('0', 'No'), ('1', 'Yes'), ])
     min_margin = fields.Float('Minimal margin', default=None)
-    max_margin = fields.Float('Minimal margin', default=None)
+    max_margin = fields.Float('Maximal margin', default=None)
     units_to_change = fields.Float(digits=(3, 2))
     type_unit_to_change = fields.Selection(selection=[('price', 'Price (€)'),
                                                       ('percentage', 'Percentage (%)')],
@@ -77,16 +79,18 @@ class AmazonProductProduct(models.Model):
 
     @job(default_channel='root.amazon')
     @api.model
-    def import_record_details(self, backend):
-        _super = super(AmazonProductProduct, self)
-        self._get_products_initial_fees(backend)
-        # self._get_products_initial_prices(backend)
-        # self._process_notification_messages(backend)
+    def import_prices(self, backend, filters):
+        self._get_first_price(backend, filters)
 
     @job(default_channel='root.amazon')
     @api.model
-    def import_changes_prices_record(self, backend):
-        _super = super(AmazonProductProduct, self)
+    def import_sqs_messages(self, backend, filters):
+        importer = self.work.component(model_name='amazon.product.product', usage='amazon.product.sqs.message.import')
+        importer.run()
+
+    @job(default_channel='root.amazon')
+    @api.model
+    def import_changes_prices_record(self, backend, filters=None):
         self._get_messages_price_changes(backend)
 
     @job(default_channel='root.amazon')
@@ -102,7 +106,16 @@ class AmazonProductProduct(models.Model):
         except Exception as e:
             if e.message.find('current transaction is aborted') > -1 or e.message.find('could not serialize access due to concurrent update') > -1:
                 raise RetryableJobError('A concurrent job is already exporting the same record '
-                                        '(%s). The job will be retried later.' % self.model._name, random.randint(60, 300), True)
+                                        '(%s). The job will be retried later.' % self._name, random.randint(60, 300), True)
+            raise e
+
+    @job(default_channel='root.amazon')
+    @api.model
+    def export_record(self, backend, internal_id):
+        _super = super(AmazonProductProduct, self)
+        try:
+            result = _super.export_record(backend, internal_id)
+        except Exception as e:
             raise e
 
     @job(default_channel='root.amazon')
@@ -113,23 +126,26 @@ class AmazonProductProduct(models.Model):
         :param backend:
         :return:
         '''
+        if backend.stock_sync:
+            self._export_stock_backend(backend)
 
-        if backend.stock_sync and backend.change_prices:
-            self._export_stock_prices(backend)
-        elif backend.stock_sync:
-            self._export_stock(backend)
+    @api.model
+    def generate_jobs_to_get_prices(self, backend):
+        _super = super(AmazonProductProduct, self)
+        self._get_products_initial_prices_and_fees(backend)
 
-    def _export_stock(self, backend):
-        _logger.info('Connector-amazon [%s] log: Export stock init with %s backend' % (inspect.stack()[0][3], backend.name))
-        products = self.env['amazon.product.product'].search([('backend_id', '=', backend.id)])
+    def _export_stock_backend(self, backend):
+        _logger.info('connector_amazon [%s][%s] log: Export stock init with %s backend' % (os.getpid(), inspect.stack()[0][3], backend.name))
+        products = self.env['amazon.product.product'].search([('backend_id', '=', backend.id), ])
 
         i = [detail for product in products for detail in product.product_product_market_ids if
              product.product_product_market_ids]
+
         for detail in i:
             if not detail.stock_sync or not detail.product_id.stock_sync:
                 continue
 
-            virtual_available = detail.product_id.odoo_id._compute_amazon_stock()
+            virtual_available = detail.product_id.odoo_id._compute_amazon_stock(products_amazon_stock_computed=[])
             handling_time = detail.product_id.odoo_id._compute_amazon_handling_time()
 
             if detail.stock != virtual_available:
@@ -167,94 +183,76 @@ class AmazonProductProduct(models.Model):
 
                 detail.product_id.handling_time = handling_time
 
-        _logger.info('Connector-amazon [%s] log: Finish Export stock with %s backend' % (inspect.stack()[0][3], backend.name))
+        _logger.info('connector_amazon [%s][%s] log: Finish Export stock with %s backend' % (os.getpid(), inspect.stack()[0][3], backend.name))
 
     def _export_stock_prices(self, backend):
-        _logger.info('Connector-amazon [%s] log: Export stock and prices init with %s backend' % (inspect.stack()[0][3], backend.name))
+        _logger.info('connector_amazon [%s][%s] log: Export stock and prices init with %s backend' % (os.getpid(), inspect.stack()[0][3], backend.name))
         products = self.env['amazon.product.product'].search([('backend_id', '=', backend.id)])
         i = [detail for product in products for detail in product.product_product_market_ids if
              product.product_product_market_ids]
         for detail in i:
+            if detail.change_prices == '0' or detail.change_prices == '0' or detail.product_id.change_prices == '0':
+                continue
             # TODO test the next methods
-            try:
-                virtual_available = detail.product_id.odoo_id._compute_amazon_stock()
-                price = detail._compute_amazon_price()
-                handling_time = detail.product_id.odoo_id._compute_amazon_handling_time()
-                detail.product_id.handling_time = handling_time
-                detail.stock = virtual_available
-                # If we haven't handling_time we assume that there isn't product to sell on stock and seller
-                if handling_time is None:
-                    virtual_available = 0
+            detail._change_price()
 
-                data = {'sku':detail.sku,
-                        'Price':("%.2f" % price).replace('.', detail.marketplace_id.decimal_currency_separator) if price else '',
-                        'Quantity':'0' if virtual_available < 0 else str(int(virtual_available)),
-                        'handling-time':str(handling_time) if handling_time and handling_time > 0 else '1',
-                        'id_mws':detail.marketplace_id.id_mws}
+        _logger.info('connector_amazon [%s][%s] log: Finish export stock and prices init with %s backend' % (os.getpid(), inspect.stack()[0][3], backend.name))
 
-                vals = {'backend_id':backend.id,
-                        'type':'Update_stock_price',
-                        'model':detail._name,
-                        'identificator':detail.id,
-                        'marketplace_id':detail.marketplace_id.id,
-                        'data':data,
-                        }
-                self.env['amazon.feed.tothrow'].create(vals)
+    def get_products_initial_prices_and_fees(self, backend):
+        _logger.info('connector_amazon [%s][%s] log: Get initial fees on backend %s' % (os.getpid(), inspect.stack()[0][3], backend.name))
 
-            except Exception as e:
-                _logger.error(e.message)
+        quota_control = self.env['amazon.control.request'].search([('request_name', '=', 'GetMyPriceForSKU')])
 
-        _logger.info('Connector-amazon [%s] log: Finish export stock and prices init with %s backend' % (inspect.stack()[0][3], backend.name))
+        search_first_price = self.env['amazon.product.product.detail'].search([('product_id.backend_id', '=', backend.id),
+                                                                               ('stock', '>', 0),
+                                                                               '|',
+                                                                               ('percentage_fee', '=', False),
+                                                                               ('first_price_searched', '=', False)],
+                                                                              limit=quota_control.max_request_quota_time -
+                                                                                    (quota_control.max_request_quota_time / 4))
+        product_importer = self.env['amazon.product.product']
+        user = backend.warehouse_id.company_id.user_tech_id
+        if not user:
+            user = self.env['res.users'].browse(self.env.uid)
+        if user != self.env.user:
+            product_importer = product_importer.sudo(user)
 
-    def _get_products_initial_fees(self, backend):
-        _logger.info('Connector-amazon [%s] log: Get initial fees on backend %s' % (inspect.stack()[0][3], backend.name))
-        detail_products = self.env['amazon.product.product.detail'].search([('product_id.backend_id', '=', backend.id),
-                                                                            ('percentage_fee', '=', False),
-                                                                            ('stock', '>', 0)])
-        with backend.work_on(self._name) as work:
-            importer = work.component(usage='amazon.product.price.import')
-            for detail in detail_products:
-                prices = importer.run(detail)
-                if prices:
-                    price_unit = float(prices.get('price_unit') or 0.)
-                    price_ship = float(prices.get('price_shipping') or 0.)
-                    if price_unit != detail.price or price_ship != detail.price_ship:
-                        detail.price = price_unit
-                        detail.price_ship = price_ship
-                    if prices.get('fee'):
-                        detail.percentage_fee = round((prices['fee']['Amount'] * 100) / (detail.price + detail.price_ship or 0))
-                        detail.total_fee = prices['fee']['Final']
+        for detail in search_first_price:
+            delayable = product_importer.with_delay(priority=1, eta=datetime.now() + timedelta(minutes=5))
+            delayable.description = '%s.%s' % (self._name, 'get_price_first_time()')
+            delayable.import_prices(backend, filters={'method':'first_price', 'product_detail':detail.id})
 
-        _logger.info('Connector-amazon [%s] log: Finish get initial fees on backend %s' % (inspect.stack()[0][3], backend.name))
+        _logger.info('connector_amazon [%s][%s] log: Finish get initial fees on backend %s' % (os.getpid(), inspect.stack()[0][3], backend.name))
         return
-
-    def _get_products_initial_prices(self, backend):
-        """
-        :return:
-        """
-        _logger.info('Connector-amazon [%s] log: Get initial prices on backend %s' % (inspect.stack()[0][3], backend.name))
-        detail_products = self.env['amazon.product.product.detail'].search([('product_id.backend_id', '=', backend.id),
-                                                                            ('first_price_searched', '=', False),
-                                                                            ('stock', '>', 0)])
-        with backend.work_on(self._name) as work:
-            importer = work.component(usage='amazon.product.lowestprice')
-            for detail in detail_products:
-                try:
-                    importer.run(detail)
-                except Exception as e:
-                    _logger.error(e.message)
-        _logger.info('Connector-amazon [%s] log: Finish get initial prices on backend %s' % (inspect.stack()[0][3], backend.name))
-
-    def _process_notification_messages(self, backend):
-        with backend.work_on(self._name) as work:
-            importer = work.component(usage='amazon.product.lowestprice')
-            importer.run_process_messages_offers(backend)
 
     def _get_messages_price_changes(self, backend):
         with backend.work_on(self._name) as work:
-            importer = work.component(usage='amazon.product.lowestprice')
-            importer.run_get_offers_changed()
-        return
+            importer = work.component(usage='amazon.product.offers.import')
+            messages = importer.run_get_offers_changed()
+            if messages and messages[1]:
+                for message in messages[1]:
+                    delayable = self.with_delay(priority=7, eta=datetime.now())
+                    filters = {'method':'process_price_message', 'message':message.id}
+                    delayable.description = '%s.%s' % (self._name, 'process_price_message()')
+                    delayable.export_record(backend, filters)
+
+    def _get_first_price(self, backend, filters):
+        assert filters
+        with backend.work_on(self._name) as work:
+            importer = work.component(usage='amazon.product.price.import')
+            detail = self.env['amazon.product.product.detail'].browse(filters['product_detail'])
+            result = None
+            if filters['method'] == 'first_price':
+                result = importer.run_first_price(detail)
+            elif filters['method'] == 'first_offer':
+                result = importer.run_first_offer(detail)
+            if not result:
+                raise RetryableJobError(msg='The prices can\'t be recovered', seconds=600)
+
+    @api.model
+    def _change_price(self, force_change=False):
+        for detail in self.product_product_market_ids:
+            detail._change_price(force_change=force_change)
 
 
 class AmazonProductProductDetail(models.Model):
@@ -272,6 +270,7 @@ class AmazonProductProductDetail(models.Model):
     currency_price = fields.Many2one('res.currency', 'Currency price', required=False)
     price_ship = fields.Float('Price of ship', required=False)  # This price have the tax included
     currency_ship_price = fields.Many2one('res.currency', 'Currency price ship', required=False)
+    total_price = fields.Char('Total price', compute='_compute_margin_amount_based_on_price')
     marketplace_id = fields.Many2one('amazon.config.marketplace', "marketplace_id")
     status = fields.Selection(selection=[('Active', 'Active'),
                                          ('Inactive', 'Inactive'),
@@ -286,6 +285,7 @@ class AmazonProductProductDetail(models.Model):
                                       [('name', '=', 'default')]))
     category_searched = fields.Boolean(default=False)
     first_price_searched = fields.Boolean(default=False)
+    first_offer_searched = fields.Boolean(default=False)
     has_buybox = fields.Boolean(string='Is the buybox winner', default=False)
     has_lowest_price = fields.Boolean(string='Is the lowest price', default=False)
     buybox_price = fields.Float('Buybox price')
@@ -294,9 +294,11 @@ class AmazonProductProductDetail(models.Model):
 
     # Min and max margin stablished for the calculation of the price on product and product price details if these do not be informed
     stock_sync = fields.Boolean('Stock shyncronization', default=True)
-    change_prices = fields.Boolean('Change the prices', default=True)
+    change_prices = fields.Selection(string='Change prices', selection=[('0', 'No'), ('1', 'Yes'), ])
     min_margin = fields.Float('Minimal margin', default=None)
-    max_margin = fields.Float('Minimal margin', default=None)
+    max_margin = fields.Float('Maximal margin', default=None)
+    margin_amount = fields.Float('Margin amount', compute='_compute_margin_amount_based_on_price')
+    margin_percentage = fields.Float('Margin percentage', digits=(3, 2))
     units_to_change = fields.Float(digits=(3, 2))
     type_unit_to_change = fields.Selection(selection=[('price', 'Price (€)'),
                                                       ('percentage', 'Percentage (%)')],
@@ -306,32 +308,123 @@ class AmazonProductProductDetail(models.Model):
 
     offer_ids = fields.One2many(comodel_name='amazon.product.offer',
                                 inverse_name='product_detail_id',
-                                string='Offers of the product')
+                                string='Offers of the product',
+                                store=True,
+                                compute='_compute_real_offer')
 
     historic_offer_ids = fields.One2many(comodel_name='amazon.historic.product.offer',
                                          inverse_name='product_detail_id',
                                          string='Historic offers of the product')
 
+    @api.onchange('margin_percentage')
+    def _onchange_margin_amount_based_on_percentage(self):
+        self._compute_margin_amount_based_on_percentage()
+
+    @api.depends('margin_percentage')
+    def _compute_margin_amount_based_on_percentage(self):
+        if hasattr(self, '_origin'):
+            price = self._origin.product_id.odoo_id._calc_amazon_price(backend=self._origin.product_id.backend_id,
+                                                                       margin=self.margin_percentage,
+                                                                       marketplace=self._origin.marketplace_id,
+                                                                       percentage_fee=self._origin.percentage_fee or AMAZON_DEFAULT_PERCENTAGE_FEE,
+                                                                       ship_price=self._origin.price_ship)
+            if price:
+                self.price = price
+                margin = self._origin._get_margin_price(price=price, price_ship=self._origin.price_ship)
+                if margin:
+                    self.margin_amount = margin[0]
+
+    @api.onchange('price', 'price_ship')
+    def _onchange_margin_amount_based_on_price(self):
+        self._compute_margin_amount_based_on_price()
+
+    @api.depends('price', 'price_ship')
+    def _compute_margin_amount_based_on_price(self):
+        origin = None
+
+        if hasattr(self, '_origin'):
+            origin = self._origin
+
+        for detail in self:
+            if origin:
+                margin = origin._get_margin_price(price=detail.price, price_ship=detail.price_ship)
+            else:
+                margin = detail._get_margin_price(price=detail.price, price_ship=detail.price_ship)
+
+            if margin:
+                detail.margin_amount = margin[0]
+                detail.margin_percentage = margin[1]
+            # Update total price
+            detail.total_price = detail.price + detail.price_ship
+
+    @api.onchange('historic_offer_ids')
+    def _compute_real_offer(self):
+        for detail in self:
+            if detail.historic_offer_ids:
+                # We get the last offer to update
+                current_historic_id = detail.historic_offer_ids.sorted('offer_date', reverse=True)[0]
+                # If the offer date of current offers is lower than historic offer date we delete current offers for update these
+                if detail.offer_ids and detail.offer_ids.mapped('offer_date')[0] < current_historic_id.offer_date:
+                    # TODO To avoid deadlock queries we are going to throw a job, but it is only for test, we don't know if these
+                    detail.offer_ids.unlink()
+                    '''
+                    product_importer = self.env['amazon.product.product']
+                    delayable = product_importer.with_delay(priority=1, eta=datetime.now() + timedelta(minutes=5))
+                    delayable.description = '%s.%s' % (self._name, 'delete_offers()')
+                    delayable.import_prices(backend, filters={'method':'first_price', 'product_detail':detail.id})
+                    '''
+                # If we haven't offers we get the last historic offers
+                if not detail.offer_ids:
+                    for offer in current_historic_id.offer_ids:
+                        vals = {}
+                        vals['product_detail_id'] = detail.id
+                        vals['id_seller'] = offer.id_seller
+                        vals['price'] = offer.price
+                        vals['currency_price_id'] = offer.currency_price_id.id
+                        vals['price_ship'] = offer.price_ship
+                        vals['currency_ship_price_id'] = offer.currency_ship_price_id.id
+                        vals['is_lower_price'] = offer.is_lower_price
+                        vals['is_buybox'] = offer.is_buybox
+                        vals['is_prime'] = offer.is_prime
+                        vals['seller_feedback_rating'] = offer.seller_feedback_rating
+                        vals['seller_feedback_count'] = offer.seller_feedback_count
+                        vals['country_ship_id'] = offer.country_ship_id.id
+                        vals['amazon_fulffilled'] = offer.amazon_fulffilled
+                        vals['condition'] = offer.condition
+                        vals['is_our_offer'] = offer.is_our_offer
+                        vals['offer_date'] = current_historic_id.offer_date
+                        detail.write({'offer_ids':[(0, 0, vals)]})
+                        total_price = offer.price + offer.price_ship
+                        if offer.is_buybox:
+                            detail.buybox_price = total_price
+                        if offer.is_lower_price:
+                            detail.lowest_price = offer.price or 0 + offer.price_ship or 0
+                        if offer.is_buybox and offer.is_our_offer:
+                            detail.has_buybox = True
+
     def _get_amazon_prices(self):
         with self.product_id.backend_id.work_on(self._name) as work:
             importer = work.component(model_name='amazon.product.product', usage='amazon.product.price.import')
-            prices = importer.run(self)
+            prices = importer.run_get_price(self)
+            vals = {}
             if prices:
                 price_unit = float(prices.get('price_unit') or 0.)
                 price_ship = float(prices.get('price_shipping') or 0.)
                 if price_unit != self.price or price_ship != self.price_ship:
-                    self.price = price_unit
-                    self.price_ship = price_ship
+                    vals['price'] = price_unit
+                    vals['price_ship'] = price_ship
                 if prices.get('fee'):
-                    self.percentage_fee = round(
+                    vals['percentage_fee'] = round(
                         (prices['fee']['Amount'] * 100) / (self.price + self.price_ship or 0))
-                    self.total_fee = prices['fee']['Final']
+                    vals['total_fee'] = prices['fee']['Final']
             else:
-                self.price = self.product_id.product_variant_id._calc_amazon_price(backend=self.product_id.backend_id,
-                                                                                   margin=self.max_margin or self.product_id.max_margin or self.product_id.backend_id.max_margin,
-                                                                                   marketplace=self.marketplace_id,
-                                                                                   percentage_fee=self.percentage_fee or AMAZON_DEFAULT_PERCENTAGE_FEE,
-                                                                                   ship_price=self.price_ship or 0)
+                vals['price'] = self.product_id.product_variant_id._calc_amazon_price(backend=self.product_id.backend_id,
+                                                                                      margin=self.max_margin or self.product_id.max_margin or self.product_id.backend_id.max_margin,
+                                                                                      marketplace=self.marketplace_id,
+                                                                                      percentage_fee=self.percentage_fee or AMAZON_DEFAULT_PERCENTAGE_FEE,
+                                                                                      ship_price=self.price_ship or 0)
+            if vals:
+                self.write(vals)
 
     def _get_detail_minimum_price(self):
         self._get_amazon_prices()
@@ -345,53 +438,8 @@ class AmazonProductProductDetail(models.Model):
                                                                          ship_price=self.price_ship)
         return self.price
 
-    def _compute_amazon_price(self):
-        """
-        Method to change the prices of the detail product (it is correspond with the same product on each marketplace)
-        :return:
-        """
-        # If on product detail change_prices is True
-        # If product detail change_prices is not False and product change_prices is True
-        # If product detail and product change_prices is not False and backend change_prices is True
-        # If one of the last three conditions is True, We change the prices
-        margin_min = self.min_margin or self.product_id.min_margin or self.product_id.backend_id.min_margin
-        margin_max = self.max_margin or self.product_id.max_margin or self.product_id.backend_id.max_margin
-        if self.change_prices or \
-                (self.change_prices not in False and self.product_id.change_prices) or \
-                (self.product_id.change_prices not in True and self.product_id.backend_id.change_prices):
-            if not self.first_price_searched or self.has_buybox or not self.offer_ids:
-                return self._get_detail_minimum_price()
-                # TODO analyze the last prices to know if it is possible up the price
-
-            buybox_price = 0
-            buybox_ship_price = 0
-            for offer in self.offer_ids:
-                if offer.is_buybox:
-                    buybox_price = offer.price
-                    buybox_ship_price = offer.price_ship
-
-            type_unit_to_change = self.type_unit_to_change or self.product_id.type_unit_to_change or self.product_id.backend_id.type_unit_to_change
-            units_to_change = self.units_to_change or self.product_id.units_to_change or self.product_id.backend_id.units_to_change
-            minus_price = units_to_change if type_unit_to_change == 'price' else ((units_to_change * buybox_price) + buybox_ship_price) / 100
-            try_price = buybox_price + buybox_ship_price - self.price_ship - minus_price
-            # It is posible that we haven't the buybox price for multiple reasons and try_price will be negative in this case
-            if try_price <= 0:
-                try_price = self.price
-            margin_price = self._get_margin_price(price=try_price, price_ship=self.price_ship)
-            if margin_min and margin_price and margin_price[1] > margin_min:
-                return try_price
-            if margin_price and margin_price[1] > margin_max:
-                return self.product_id.product_variant_id._calc_amazon_price(backend=self.product_id.backend_id,
-                                                                             margin=margin_max,
-                                                                             marketplace=self.marketplace_id,
-                                                                             percentage_fee=self.percentage_fee or AMAZON_DEFAULT_PERCENTAGE_FEE,
-                                                                             ship_price=self.price_ship) or self.price
-
-        self._get_amazon_prices()
-        return self.price
-
     @api.model
-    def _get_margin_price(self, price, price_ship):
+    def _get_margin_price(self, price=None, price_ship=None):
         """
         Get margin of a price if it is sell
         :param price:
@@ -408,19 +456,20 @@ class AmazonProductProductDetail(models.Model):
         for tax_id in taxe_ids:
             taxes_amount += tax_id._compute_amount_taxes(total_sell_price)
 
-        delivery_carriers = [template_ship.delivery_standar_carrier_ids for template_ship in backend.shipping_template_ids
+        delivery_carriers = [template_ship.delivery_standard_carrier_ids for template_ship in backend.shipping_template_ids
                              if template_ship.name == self.merchant_shipping_group and
                              template_ship.marketplace_id.id == self.marketplace_id.id]
 
         # Get shipping lowest cost configured
         ship_cost = None
-        for delivery in delivery_carriers:
-            try:
-                aux = delivery.get_price_from_picking(total=price, weight=self.product_id.weight, volume=0, quantity=1)
-            except UserError as e:
-                aux = None
-            if not ship_cost or (aux and aux < ship_cost):
-                ship_cost = aux
+        if delivery_carriers:
+            for delivery in delivery_carriers[0]:
+                try:
+                    aux = delivery.get_price_from_picking(total=price, weight=self.product_id.weight or self.product_id.odoo_id.weight, volume=0, quantity=1)
+                except UserError as e:
+                    aux = None
+                if not ship_cost or (aux and aux < ship_cost):
+                    ship_cost = aux
 
         # Get the cost of product supplier
         cost = self.product_id.odoo_id._get_cost()
@@ -431,67 +480,80 @@ class AmazonProductProductDetail(models.Model):
         margin_price = total_sell_price - amazon_fee - taxes_amount - cost - (ship_cost or 0)
         return (margin_price, margin_price / cost * 100)
 
+    @api.multi
+    def _change_price(self, force_change=False):
+        """
+        Throw the job to change price when the detail, product, backend or one of the suppliers have the flag of change prices on 'yes'
+        If one of these flags of detail, product or backend is on 'no' the price doesn't change
+        :return:
+        """
+        if force_change or ((self.change_prices == '1' or
+                             self.product_id.change_prices == '1' or
+                             self.product_id.backend_id.change_prices == '1') and \
+                            not (self.change_prices == '0' or
+                                 self.product_id.change_prices == '0' or
+                                 self.product_id.backend_id.change_prices == '0')):
+            product_binding_model = self.env['amazon.product.product']
+            delayable = product_binding_model.with_delay(priority=5, eta=datetime.now())
+            vals = {'method':'change_price', 'detail_product_id':self.id, 'force_change':force_change}
+            delayable.description = '%s.%s' % (self._name, 'change_price(%s)' % self.sku)
+            delayable.export_record(self.product_id.backend_id, vals)
+
+    def write(self, vals):
+        """Refresh delivery price after saving."""
+        # If there are a change on merchant shipping template, we need to get the price ship too
+        if vals.get('merchant_shipping_group') and vals['merchant_shipping_group'] != self.merchant_shipping_group and not vals.get('price_ship'):
+            with self.product_id.backend_id.work_on(self._name) as work:
+                importer = work.component(model_name='amazon.product.product', usage='amazon.product.price.import')
+                prices = importer.run_get_price(self)
+                if prices:
+                    price_unit = float(prices.get('price_unit') or 0.)
+                    price_ship = float(prices.get('price_shipping') or 0.)
+                    vals['price_ship'] = price_ship
+                    if prices.get('fee'):
+                        vals['percentage_fee'] = round(
+                            (prices['fee']['Amount'] * 100) / (price_unit + price_ship or 0))
+                        vals['total_fee'] = prices['fee']['Final']
+                        if not self.first_price_searched:
+                            vals['first_price_searched'] = True
+
+        return super(AmazonProductProductDetail, self).write(vals)
+
 
 class SupplierInfo(models.Model):
     _inherit = 'product.supplierinfo'
 
-    supplier_stock = fields.Float('Supplier stock')
-    get_supplier_stock = fields.Boolean('Get supplier stock?', default=None)
-
     @api.model
     def create(self, vals):
         record = super(SupplierInfo, self).create(vals)
-        self._event('on_record_create').notify(record, fields=vals.keys())
+        self._event('on_record_create').notify(record, fields=vals)
+        return record
+
+    @api.model
+    def write(self, vals):
+        record = super(SupplierInfo, self).write(vals)
+        self._event('on_record_write').notify(self, fields=vals)
+        return record
+
+    @api.multi
+    def unlink(self):
+        record = super(SupplierInfo, self).unlink()
+        self._event('on_record_unlink').notify(record, fields=None)
         return record
 
     def export_products_from_supplierinfo(self):
         if self.name.automatic_export_products and (self.product_id.barcode or self.product_tmpl_id.barcode):
-            for marketplace in self.name.backend_id.marketplace_ids:
-                supr = self.env['amazon.feed.tothrow'].search([('backend_id', '=', self.name.backend_id.id),
-                                                               ('type', '=', 'Add_products_csv'),
-                                                               ('launched', '=', False),
-                                                               ('model', '=', self.product_id._name),
-                                                               ('identificator', '=', self.product_id.id),
-                                                               ('marketplace_id', '=', marketplace.id)])
-
-                data = {'sku':self.product_id.default_code or self.product_id.product_variant_id.default_code}
-                data['product-id'] = self.product_id.barcode or self.product_tmpl_id.barcode
-                data['product-id-type'] = 'EAN'
-                price = self.product_id.product_variant_id._calc_amazon_price(backend=self.name.backend_id,
-                                                                              margin=self.name.backend_id.max_margin or AMAZON_DEFAULT_PERCENTAGE_MARGIN,
-                                                                              marketplace=marketplace,
-                                                                              percentage_fee=AMAZON_DEFAULT_PERCENTAGE_FEE)
-                data['price'] = ("%.2f" % price).replace('.', marketplace.decimal_currency_separator) if price else ''
-                data['minimum-seller-allowed-price'] = ''
-                data['maximum-seller-allowed-price'] = ''
-                data['item-condition'] = '11'  # We assume the products are new
-                data['quantity'] = '0'  # The products stocks allways is 0 when we export these
-                data['add-delete'] = 'a'
-                data['will-ship-internationally'] = ''
-                data['expedited-shipping'] = ''
-                data['merchant-shipping-group-name'] = ''
-                handling_time = self.product_id.product_variant_id._compute_amazon_handling_time() or ''
-                data['handling-time'] = str(handling_time) if price else ''
-                data['item_weight'] = ''
-                data['item_weight_unit_of_measure'] = ''
-                data['item_volume'] = ''
-                data['item_volume_unit_of_measure'] = ''
-                data['id_mws'] = marketplace.id_mws
-                vals = {'backend_id':self.name.backend_id.id,
-                        'type':'Add_products_csv',
-                        'model':self.product_id._name,
-                        'identificator':self.product_id.id,
-                        'marketplace_id':marketplace.id,
-                        'data':data,
-                        }
-                if supr:
-                    supr.write(vals)
-                else:
-                    self.env['amazon.feed.tothrow'].create(vals)
+            product_binding_model = self.env['amazon.product.product']
+            delayable = product_binding_model.with_delay(priority=5, eta=datetime.now())
+            vals = {'method':'add_to_amazon_listing', 'product_id':self.product_id.product_variant_id.id, 'marketplaces':self.name.backend_id.marketplace_ids}
+            delayable.description = '%s.%s' % (self._name, 'add_to_amazon_listing()')
+            delayable.export_record(self.name.backend_id, vals)
 
 
 class ProductProduct(models.Model):
     _inherit = 'product.product'
+
+    amazon_bind_id = fields.Many2one('amazon.product.product', 'Amazon product', compute='_compute_amazon_product_id')
 
     amazon_bind_ids = fields.One2many(
         comodel_name='amazon.product.product',
@@ -499,15 +561,25 @@ class ProductProduct(models.Model):
         string='Amazon Bindings',
     )
 
+    supplier_stock = fields.Float(string='Supplier stock')
+    get_supplier_stock = fields.Selection(string='Get supplier stock?', selection=[('1', 'Yes'), ('0', 'No'), ])
+
+    @api.depends('amazon_bind_ids')
+    def _compute_amazon_product_id(self):
+        for p in self:
+            p.amazon_bind_id = p.amazon_bind_ids[:1].id
+
     def _get_supplier_product_qty(self):
         prod_qty = 0
         if self.product_tmpl_id.seller_ids:
             time_now = datetime.now()
             cost = None
             for supllier_prod in self.product_tmpl_id.seller_ids:
+                # If the supplier stock flag on product is 1, we get supplier stock
                 # If the supplier stock flag on product is False we don't get the supplier stock never
                 # If the supplier stock flag on product is True or is not False and the flag on partner is True we get the stock supplier
-                if supllier_prod.get_supplier_stock != '0' and (supllier_prod.name.get_supplier_stock == '1' or supllier_prod.get_supplier_stock == '1') and \
+                if ((self.get_supplier_stock == '1' or supllier_prod.name.get_supplier_stock == '1') and
+                    (self.get_supplier_stock != '0' and supllier_prod.name.get_supplier_stock != '0')) and \
                         (not supllier_prod.date_end or datetime.strptime(supllier_prod.date_end, '%Y-%m-%d') > time_now) and \
                         (not cost or cost > supllier_prod.price):
                     cost = supllier_prod.price
@@ -515,7 +587,24 @@ class ProductProduct(models.Model):
 
         return prod_qty
 
-    def _compute_amazon_stock(self):
+    def _compute_amazon_stock(self, products_amazon_stock_computed=[]):
+        """
+        Method to compute the stock on Amazon, we are going to get the virtual available to put on Amazon stock
+        :param products_amazon_stock_computed: products computed now, it is important initialize the list on the first call
+        :return:
+        """
+        if self.id in products_amazon_stock_computed:
+            return 0
+        products_amazon_stock_computed.append(self.id)
+        # If the product brand is in the ban list, the stock must be 0
+        if len(self.amazon_bind_ids) == 1:
+            if self.env['amazon.brand.ban'].search([('brand_ban', '=', self.product_brand_id.id), ('backend_id', '=', self.amazon_bind_ids.backend_id.id)]):
+                return 0
+        elif len(self.amazon_bind_ids) > 1:
+            for amazon_prod in self.amazon_bind_ids:
+                if self.env['amazon.brand.ban'].search([('brand_ban', '=', self.product_brand_id.id), ('backend_id', '=', amazon_prod.backend_id.id)]):
+                    return 0
+
         qty_total_product = 0
         # Add the virtual avaiable of the product itself
         if self.virtual_available and self.virtual_available > 0:
@@ -528,7 +617,8 @@ class ProductProduct(models.Model):
 
                 for line_bom in bom.bom_line_ids:
                     # We are going to divide the product bom stock for quantity of bom
-                    aux = int(line_bom.product_id._compute_amazon_stock() / line_bom.product_qty)
+                    aux = int(line_bom.product_id._compute_amazon_stock(
+                        products_amazon_stock_computed=products_amazon_stock_computed) / line_bom.product_qty)
                     # If is the first ocurrence or the calc of stock avaiable with this product is lower than we are saved, we updated this field
                     if qty_bom_produced == None or aux < qty_bom_produced:
                         qty_bom_produced = aux
@@ -542,9 +632,9 @@ class ProductProduct(models.Model):
 
     def _compute_amazon_handling_time(self):
         # Add the virtual avaiable of the product itself
-        stock_available = self._get_stock_available()
+        stock_available = self._get_stock_available(products_stock_computed=[])
         if not stock_available:
-            return self._get_forecast_handling_time()
+            return self._get_forecast_handling_time(products_computed=[])
         return 1
 
     @api.model
@@ -559,36 +649,49 @@ class ProductProduct(models.Model):
 
         elif self.product_tmpl_id.seller_ids:
             time_now = datetime.now()
-            for supllier_prod in self.product_tmpl_id.seller_ids:
-                if (not cost or cost > supllier_prod.price) and \
-                        (not supllier_prod.date_end or datetime.strptime(supllier_prod.date_end, '%Y-%m-%d') > time_now):
-                    cost = supllier_prod.price
+            for supplier_prod in self.product_tmpl_id.seller_ids:
+                if supplier_prod.supplier_stock > 0 and (not cost or cost > supplier_prod.price) and \
+                        (not supplier_prod.date_end or datetime.strptime(supplier_prod.date_end, '%Y-%m-%d') > time_now):
+                    cost = supplier_prod.price
         elif self.product_tmpl_id.bom_ids:
             for bom in self.product_tmpl_id.bom_ids:
                 for line_bom in bom.bom_line_ids:
-                    cost += line_bom.product_id._get_cost() * line_bom.product_qty or 0
+                    cost += line_bom.product_id._get_cost() * (line_bom.product_qty or 1)
         return cost
 
-    def _get_stock_available(self):
-        if self._compute_amazon_stock() > 0 and self.qty_available and self.qty_available > 0:
+    def _get_stock_available(self, products_stock_computed=[]):
+        """
+
+        :param products_computed:
+        :return:
+        """
+        if self._compute_amazon_stock(products_amazon_stock_computed=[]) > 0 and self.qty_available and self.qty_available > 0:
             return self.qty_available
+        if self.id in products_stock_computed:
+            # There are recursive configuration on these product
+            return 0
+        products_stock_computed.append(self.id)
         if self.bom_ids:
             # if we have bom, we need to calculate the forecast stock
             bom_hand_time = None
             for bom in self.bom_ids:
                 for line_bom in bom.bom_line_ids:
                     # We are going to get handling time of product of bom
-                    aux = line_bom.product_id._get_stock_available()
+                    aux = line_bom.product_id._get_stock_available(products_stock_computed=products_stock_computed)
                     if not bom_hand_time or bom_hand_time < aux:
                         bom_hand_time = aux
             if bom_hand_time:
                 return bom_hand_time
 
-    def _get_forecast_handling_time(self):
+    def _get_forecast_handling_time(self, products_computed=[]):
         """
         We are going to get the handling time of the lowest cost supplier
         :return:
         """
+        if self.id in products_computed:
+            # There are recursive configuration on these product
+            return None
+        products_computed.append(self.id)
         hand_time = None
         # TODO test calc the handling time when we are waiting arrived products from a purchase
         cost = None
@@ -618,8 +721,8 @@ class ProductProduct(models.Model):
         # If we haven't hand_time we need get it of seller delay
         if not hand_time and self.product_tmpl_id.seller_ids:
             for supllier_prod in self.product_tmpl_id.seller_ids:
-                if (not supllier_prod.date_end or time_now > datetime.strptime(supllier_prod.date_end, '%Y-%m-%d')) and (
-                        not cost or cost > supllier_prod.price):
+                if supllier_prod.supplier_stock and (not supllier_prod.date_end or time_now > datetime.strptime(supllier_prod.date_end, '%Y-%m-%d')) \
+                        and (not cost or cost > supllier_prod.price):
                     cost = supllier_prod.price
                     hand_time = supllier_prod.delay
 
@@ -630,7 +733,7 @@ class ProductProduct(models.Model):
 
                 for line_bom in bom.bom_line_ids:
                     # We are going to get handling time of product of bom
-                    aux = line_bom.product_id._get_forecast_handling_time()
+                    aux = line_bom.product_id._get_forecast_handling_time(products_computed=products_computed)
                     if not bom_hand_time or bom_hand_time < aux:
                         bom_hand_time = aux
             hand_time = bom_hand_time
@@ -649,33 +752,34 @@ class ProductProduct(models.Model):
                 return None
             margin_amount = cost * margin / 100
 
-            delivery_carriers = [template_ship.delivery_standar_carrier_ids for template_ship in backend.shipping_template_ids
+            delivery_carriers = [template_ship.delivery_standard_carrier_ids for template_ship in backend.shipping_template_ids
                                  if template_ship.marketplace_id.id == marketplace.id and template_ship.is_default]
 
             # Get shipping lowest cost configured
             ship_cost = None
-            for delivery in delivery_carriers:
-                try:
-                    aux = delivery.get_price_from_picking(total=0, weight=self.weight or self.product_tmpl_id.weight, volume=0, quantity=1)
-                except UserError as e:
-                    aux = None
-                if not ship_cost or (aux and aux < ship_cost):
-                    ship_cost = aux
+            if delivery_carriers:
+                for delivery in delivery_carriers[0]:
+                    try:
+                        aux = delivery.get_price_from_picking(total=0, weight=self.weight or self.product_tmpl_id.weight, volume=0, quantity=1)
+                    except UserError as e:
+                        aux = None
+                    if not ship_cost or (aux and aux < ship_cost):
+                        ship_cost = aux
 
-            if not ship_cost:
-                raise UserError(_('The configuration beetwen delivery carrier and marketplace(%s) of the backend(%s) is missing for the product: \'%s\'' %
-                                  (marketplace.name, backend.name, self.name)))
+                if not ship_cost:
+                    raise UserError(_('The configuration beetwen delivery carrier and marketplace(%s) of the backend(%s) is missing for the product: \'%s\'' %
+                                      (marketplace.name, backend.name, self.name)))
 
-            price_without_tax = cost + margin_amount + ship_cost
+                price_without_tax = cost + margin_amount + ship_cost
 
-            taxe_ids = self.product_tmpl_id.taxes_id or backend.env['account.tax'].browse(backend.env['ir.values'].get_default('product.template',
-                                                                                                                               'taxes_id',
-                                                                                                                               company_id=backend.company_id.id))
-            final_price = 0
-            for tax_id in taxe_ids:
-                final_price += tax_id._compute_amazon_amount_final_price(price_without_tax, percentage_fee=percentage_fee, price_include=False)
+                tax_ids = self.product_tmpl_id.taxes_id or backend.env['account.tax'].browse(backend.env['ir.values'].get_default('product.template',
+                                                                                                                                  'taxes_id',
+                                                                                                                                  company_id=backend.company_id.id))
+                final_price = 0
+                for tax_id in tax_ids:
+                    final_price += tax_id._compute_amazon_amount_final_price(price_without_tax, percentage_fee=percentage_fee, price_include=False)
 
-            return final_price - ship_price
+                return final_price - ship_price
 
         return None
 
@@ -685,6 +789,9 @@ class ProductTemplate(models.Model):
 
     is_amazon_product = fields.Boolean(store=True,
                                        default=lambda self:True if self.product_variant_id.amazon_bind_ids else False)
+
+    amazon_bind_id = fields.Many2one('amazon.product.product', 'Amazon product', related='product_variant_id.amazon_bind_id')
+    product_product_market_ids = fields.One2many(comodel_name='amazon.product.product.detail', related='amazon_bind_id.product_product_market_ids')
 
 
 class AmazonProductUoM(models.Model):
@@ -704,14 +811,30 @@ class AmazonOffer(models.Model):
     currency_price_id = fields.Many2one('res.currency')
     price_ship = fields.Float()
     currency_ship_price_id = fields.Many2one('res.currency')
-    is_lower_price = fields.Boolean()
-    is_buybox = fields.Boolean()
-    is_prime = fields.Boolean()
+    total_price = fields.Float(store=True, compute='_compute_total_price')
+    is_lower_price = fields.Boolean(default=False)
+    is_buybox = fields.Boolean(default=False)
+    is_prime = fields.Boolean(default=False)
     seller_feedback_rating = fields.Char()
     seller_feedback_count = fields.Char()
     country_ship_id = fields.Many2one('res.country')
     amazon_fulffilled = fields.Boolean()
     condition = fields.Char()
+    is_our_offer = fields.Boolean(compute='_compute_is_our_offer', store=True)
+    offer_date = fields.Char('Offer date', readonly='1')
+
+    @api.depends('id_seller')
+    def _compute_is_our_offer(self):
+        for offer in self:
+            if offer.product_detail_id and offer.id_seller == offer.product_detail_id.product_id.backend_id.seller:
+                offer.is_our_offer = True
+            else:
+                offer.is_our_offer = False
+
+    @api.depends('price', 'price_ship')
+    def _compute_total_price(self):
+        for offer in self:
+            offer.total_price = offer.price or 0 + offer.price_ship or 0
 
 
 class AmazonHistoricOffer(models.Model):
@@ -722,6 +845,11 @@ class AmazonHistoricOffer(models.Model):
     offer_ids = fields.One2many(comodel_name='amazon.product.offer',
                                 inverse_name='historic_id',
                                 string='Offers of the product')
+
+    def create(self, vals):
+        record = super(AmazonHistoricOffer, self).create(vals)
+        record.product_detail_id._compute_real_offer()
+        return record
 
 
 class ProductProductAdapter(Component):
@@ -735,6 +863,7 @@ class ProductProductAdapter(Component):
         except Exception:
             raise
 
+    @api.model
     def get_lowest_price(self, arguments):
         try:
             assert arguments

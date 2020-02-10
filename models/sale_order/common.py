@@ -125,6 +125,8 @@ class AmazonSaleOrder(models.Model):
         if isinstance(result, Exception):
             raise Exception(result)
 
+        return result
+
     @api.depends('amazon_order_line_ids.fee')
     def _compute_order_fee(self):
         percentage_fee = 0.
@@ -176,6 +178,23 @@ class SaleOrder(models.Model):
     def write(self, vals):
         return super(SaleOrder, self).write(vals)
 
+    def _amazon_link_binding_of_copy(self, new):
+        # link binding of the canceled order to the new order, so the
+        # operations done on the new order will be sync'ed with Amazon
+        if self.state != 'cancel':
+            return
+        binding_model = self.env['amazon.sale.order']
+        bindings = binding_model.search([('odoo_id', '=', self.id)])
+        bindings.write({'odoo_id':new.id})
+
+        for binding in bindings:
+            # the sales' status on Amazon is likely 'canceled'
+            # so we will export the new status (pending, processing, ...)
+            job_descr = _("Reopen sales order %s") % (binding.external_id,)
+            binding.with_delay(
+                description=job_descr
+            ).export_state_change()
+
     @api.multi
     def copy(self, default=None):
         self_copy = self.with_context(__copy_from_quotation=True)
@@ -221,8 +240,14 @@ class AmazonSaleOrderLine(models.Model):
                        store=True,
                        readonly=True)
 
+    def get_amazon_detail_product(self):
+        return self.amazon_product_id.product_product_market_ids.filtered(lambda detail:detail.marketplace_id == self.amazon_order_id.marketplace_sale_id)
+
     def _compute_item_fee(self):
-        return 0.
+        percentage = self.get_amazon_detail_product().percentage_fee
+        if percentage:
+            return ((self.item_price * self.qty_ordered) + self.ship_price) * percentage / 100
+        return 0
 
     @api.model
     def create(self, vals):
@@ -297,3 +322,12 @@ class SaleOrderAdapter(Component):
         :return: lines of the order
         '''
         return self._call(method='list_items_from_order', arguments=filters)
+
+    @api.multi
+    def get_orders(self, arguments):
+        try:
+            assert arguments
+            return self._call(method='get_order', arguments=arguments)
+        except AssertionError:
+            _logger.error('There aren\'t (%s) parameters for %s' % ('get_order', arguments))
+            raise
