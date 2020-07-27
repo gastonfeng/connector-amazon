@@ -38,7 +38,7 @@ class WizardImportOrders(models.TransientModel):
                                             generate_report=self.generate_report == 'report',
                                             update_import_date=False)
 
-        except Exception, e:
+        except Exception as e:
             raise e
 
     @api.multi
@@ -54,7 +54,7 @@ class WizardImportOrders(models.TransientModel):
                                               import_end_time=finish_date,
                                               update_import_date=False)
 
-        except Exception, e:
+        except Exception as e:
             raise e
 
     date_init = fields.Date('Start date', required=True)
@@ -92,7 +92,7 @@ class WizardImportOrder(models.TransientModel):
                 if user != self.env.user:
                     sale_binding_model = sale_binding_model.sudo(user)
                 return sale_binding_model.import_record(backend, external_id=self.id_order)
-        except Exception, e:
+        except Exception as e:
             raise e
 
     id_order = fields.Char('Order Id', required=True)

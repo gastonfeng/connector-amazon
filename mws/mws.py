@@ -5,14 +5,14 @@
 # Forked and modified code of https://github.com/czpython/python-amazon-mws
 #
 
-from time import gmtime, strftime
-import urllib
+import base64
 import hashlib
 import hmac
-import base64
 import re
+import urllib
+from time import gmtime, strftime
 
-import utils
+from . import utils
 
 try:
     from xml.etree.ElementTree import ParseError as XMLError
@@ -37,17 +37,17 @@ __all__ = [
 # for a list of the end points and marketplace IDs
 
 MARKETPLACES = {
-    "CA":"https://mws.amazonservices.ca",  # A2EUQ1WTGCTBG2
-    "US":"https://mws.amazonservices.com",  # ATVPDKIKX0DER",
-    "DE":"https://mws-eu.amazonservices.com",  # A1PA6795UKMFR9
-    "ES":"https://mws-eu.amazonservices.com",  # A1RKKUPIHCS9HS
-    "FR":"https://mws-eu.amazonservices.com",  # A13V1IB3VIYZZH
-    "IN":"https://mws.amazonservices.in",  # A21TJRUUN4KGV
-    "IT":"https://mws-eu.amazonservices.com",  # APJ6JRA9NG5V4
-    "UK":"https://mws-eu.amazonservices.com",  # A1F83G8C2ARO7P
-    "JP":"https://mws.amazonservices.jp",  # A1VC38T7YXB528
-    "CN":"https://mws.amazonservices.com.cn",  # AAHKV2X7AFYLW
-    "MX":"https://mws.amazonservices.com.mx",  # A1AM78C64UM0Y8
+    "CA": "https://mws.amazonservices.ca",  # A2EUQ1WTGCTBG2
+    "US": "https://mws.amazonservices.com",  # ATVPDKIKX0DER",
+    "DE": "https://mws-eu.amazonservices.com",  # A1PA6795UKMFR9
+    "ES": "https://mws-eu.amazonservices.com",  # A1RKKUPIHCS9HS
+    "FR": "https://mws-eu.amazonservices.com",  # A13V1IB3VIYZZH
+    "IN": "https://mws.amazonservices.in",  # A21TJRUUN4KGV
+    "IT": "https://mws-eu.amazonservices.com",  # APJ6JRA9NG5V4
+    "UK": "https://mws-eu.amazonservices.com",  # A1F83G8C2ARO7P
+    "JP": "https://mws.amazonservices.jp",  # A1VC38T7YXB528
+    "CN": "https://mws.amazonservices.com.cn",  # AAHKV2X7AFYLW
+    "MX": "https://mws.amazonservices.com.mx",  # A1AM78C64UM0Y8
 }
 
 
@@ -153,8 +153,8 @@ class MWS(object):
             self.domain = MARKETPLACES[self._backend.region.code]
         else:
             error_msg = "Incorrect region supplied ('%(region)s'). Must be one of the following: %(marketplaces)s" % {
-                "marketplaces":', '.join(MARKETPLACES.keys()),
-                "region":self._backend.region.code,
+                "marketplaces": ', '.join(MARKETPLACES.keys()),
+                "region": self._backend.region.code,
             }
             raise MWSError(error_msg)
 
@@ -167,12 +167,12 @@ class MWS(object):
         extra_data = remove_empty(extra_data)
 
         params = {
-            'AWSAccessKeyId':self._backend.access_key,
-            self.ACCOUNT_TYPE:self._backend.seller,
-            'SignatureVersion':'2',
-            'Timestamp':utils.get_timestamp(),
-            'Version':self.version,
-            'SignatureMethod':'HmacSHA256',
+            'AWSAccessKeyId': self._backend.access_key,
+            self.ACCOUNT_TYPE: self._backend.seller,
+            'SignatureVersion': '2',
+            'Timestamp': utils.get_timestamp(),
+            'Version': self.version,
+            'SignatureMethod': 'HmacSHA256',
         }
         if self._backend.token:
             params['MWSAuthToken'] = self._backend.token
@@ -188,10 +188,11 @@ class MWS(object):
         except Exception as e:
             raise e
 
-        request_description = '&'.join(['%s=%s' % (k, urllib.quote(params[k], safe='-_.~').encode('utf-8')) for k in sorted(params)])
+        request_description = '&'.join(
+            ['%s=%s' % (k, urllib.quote(params[k], safe='-_.~').encode('utf-8')) for k in sorted(params)])
         signature = self.calc_signature(method, request_description)
         url = '%s%s?%s&Signature=%s' % (self.domain, self.uri, request_description, urllib.quote(signature))
-        headers = {'User-Agent':'python-amazon-mws/0.0.1 (Language=Python)'}
+        headers = {'User-Agent': 'python-amazon-mws/0.0.1 (Language=Python)'}
         headers.update(kwargs.get('extra_headers', {}))
 
         try:
@@ -217,7 +218,8 @@ class MWS(object):
             error = MWSError(str(httpe.response.text))
             error.response = httpe.response
             if 'RequestThrottled' in error.response.text:
-                raise pool.throw_retry_exception_for_throttled(env, request_name=extra_data.get('Action'), backend_id=self._backend.id)
+                raise pool.throw_retry_exception_for_throttled(env, request_name=extra_data.get('Action'),
+                                                               backend_id=self._backend.id)
             raise error
 
         # Store the response object in the parsed_response for quick access
@@ -235,7 +237,8 @@ class MWS(object):
     def calc_signature(self, method, request_description):
         """Calculate MWS signature to interface with Amazon
         """
-        sig_data = method + '\n' + self.domain.replace('https://', '').lower() + '\n' + self.uri + '\n' + request_description
+        sig_data = method + '\n' + self.domain.replace('https://',
+                                                       '').lower() + '\n' + self.uri + '\n' + request_description
         return base64.b64encode(hmac.new(str(self._backend.key), sig_data, hashlib.sha256).digest())
 
     def enumerate_param(self, param, values):
@@ -277,7 +280,7 @@ class Feeds(MWS):
         data.update(self.enumerate_param('MarketplaceIdList.Id.', marketplaceids))
         md = calc_md5(feed)
         return self.make_request(data, method="POST", body=feed,
-                                 extra_headers={'Content-MD5':md, 'Content-Type':content_type})
+                                 extra_headers={'Content-MD5': md, 'Content-Type': content_type})
 
     def get_feed_submission_list(self, feedids=None, max_count=None, feedtypes=None,
                                  processingstatuses=None, fromdate=None, todate=None):
@@ -558,7 +561,8 @@ class Products(MWS):
         data.update(self.enumerate_param('ASINList.ASIN.', asins))
         return self.make_request(data)
 
-    def get_my_fee_estimate(self, marketplaceids, types, ids, prices, currency_prices, shipping_prices=False, currency_ship_prices=False,
+    def get_my_fee_estimate(self, marketplaceids, types, ids, prices, currency_prices, shipping_prices=False,
+                            currency_ship_prices=False,
                             is_amazon_fulfilleds=[False]):
         """ Returns the estimated fees for a list of products, based on a list of
             product identifier values (ASIN, SellerSKU)
@@ -576,13 +580,15 @@ class Products(MWS):
                 dict_data['MarketplaceId'] = marketplaceids[i]
                 dict_data['IdType'] = types[i]
                 dict_data['IdValue'] = ids[i]
-                dict_data['Identifier'] = strftime("%Y%m%d%H%M%S", gmtime()) + '-||-' + marketplaceids[i] + '-||-' + types[i] + '-||-' + ids[i]
+                dict_data['Identifier'] = strftime("%Y%m%d%H%M%S", gmtime()) + '-||-' + marketplaceids[i] + '-||-' + \
+                                          types[i] + '-||-' + ids[i]
                 dict_data['PriceToEstimateFees.ListingPrice.Amount'] = prices[i]
                 dict_data['PriceToEstimateFees.ListingPrice.CurrencyCode'] = currency_prices[i]
                 if shipping_prices:
                     dict_data['PriceToEstimateFees.Shipping.Amount'] = shipping_prices[i]
                     dict_data['PriceToEstimateFees.Shipping.CurrencyCode'] = currency_ship_prices[i]
-                if is_amazon_fulfilleds and isinstance(is_amazon_fulfilleds, list) and len(marketplaceids) == len(is_amazon_fulfilleds):
+                if is_amazon_fulfilleds and isinstance(is_amazon_fulfilleds, list) and len(marketplaceids) == len(
+                        is_amazon_fulfilleds):
                     dict_data['IsAmazonFulfilled'] = is_amazon_fulfilleds[i]
                 else:
                     dict_data['IsAmazonFulfilled'] = False
@@ -726,7 +732,8 @@ class Subscriptions(MWS):
 
         return self.make_request(data, "POST")
 
-    def create_subscription(self, marketplaceid, notification_type, delivery_channel='SQS', destination=['sqsQueueUrl'], value=[], is_enabled=True):
+    def create_subscription(self, marketplaceid, notification_type, delivery_channel='SQS', destination=['sqsQueueUrl'],
+                            value=[], is_enabled=True):
         """
         Method to create suscription
         :param marketplaceid:
@@ -753,7 +760,8 @@ class Subscriptions(MWS):
 
         return self.make_request(data, "POST")
 
-    def get_subscription(self, marketplaceid, notification_type, delivery_channel='SQS', destination=['sqsQueueUrl'], value=[]):
+    def get_subscription(self, marketplaceid, notification_type, delivery_channel='SQS', destination=['sqsQueueUrl'],
+                         value=[]):
         """
         Method to create suscription
         :param marketplaceid:

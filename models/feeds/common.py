@@ -57,13 +57,13 @@ class AmazonFeed(models.Model):
 
     def get_feed_types(self):
         lst = []
-        for key, value in FEED_TYPES.iteritems():
+        for key, value in FEED_TYPES.items():
             lst.append((key, value))
         return lst
 
     def get_feed_status(self):
         lst = []
-        for key, value in FEED_STATUS.iteritems():
+        for key, value in FEED_STATUS.items():
             lst.append((key, value))
         return lst
 
@@ -88,7 +88,7 @@ class AmazonFeedToThrow(models.Model):
 
     def get_feed_types(self):
         lst = []
-        for key, value in FEED_TYPES.iteritems():
+        for key, value in FEED_TYPES.items():
             lst.append((key, value))
         return lst
 

@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="view_amazon_order_tree" model="ir.ui.view">
-        <field name="name">Orders</field>
-        <field name="model">amazon.sale.order</field>
-        <field name="arch" type="xml">
-            <tree string="Orders" create="false" sum="total_amount">
-                <field name="backend_id" string="Name account" />
-                <field name="id_amazon_order" string="Order Id" />
-                <field name="order_status_id" string="Order status" />
-                <field name="date_purchase" string="Purchase date" />
-                <field name="sales_channel" string="Sale chanel" />
-                <field name="date_latest_ship" string="Latest ship date" />
-                <field name="date_latest_delivery" string="Latest delivery date" />
-                <field name="total_amount" string="Total amount"/>
-                <field name="order_fee" string="Fee"/>
-                <field name="buyer_email" string="Buyer email"/>
-                <field name="fullfillment_channel" string="Fullfillment channel"/>
-            </tree>
-        </field>
-    </record>
+    <!--<record id="view_amazon_order_tree" model="ir.ui.view">-->
+        <!--<field name="name">Orders</field>-->
+        <!--<field name="model">amazon.sale.order</field>-->
+        <!--<field name="arch" type="xml">-->
+            <!--<tree string="Orders" create="false" sum="total_amount">-->
+                <!--<field name="backend_id" string="Name account" />-->
+                <!--<field name="id_amazon_order" string="Order Id" />-->
+                <!--<field name="order_status_id" string="Order status" />-->
+                <!--<field name="date_purchase" string="Purchase date" />-->
+                <!--<field name="sales_channel" string="Sale chanel" />-->
+                <!--<field name="date_latest_ship" string="Latest ship date" />-->
+                <!--<field name="date_latest_delivery" string="Latest delivery date" />-->
+                <!--<field name="total_amount" string="Total amount"/>-->
+                <!--<field name="order_fee" string="Fee"/>-->
+                <!--<field name="buyer_email" string="Buyer email"/>-->
+                <!--<field name="fullfillment_channel" string="Fullfillment channel"/>-->
+            <!--</tree>-->
+        <!--</field>-->
+    <!--</record>-->
 
     <record id="view_amazon_order_line_tree" model="ir.ui.view">
         <field name="name">Order line</field>
@@ -62,13 +62,13 @@
         </field>
     </record>
 
-    <record id="action_amazon_order" model="ir.actions.act_window">
-        <field name="name">Amazon Orders</field>
-        <field name="res_model">amazon.sale.order</field>
-        <field name="view_type">form</field>
-        <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_amazon_order_tree"/>
-    </record>
+    <!--<record id="action_amazon_order" model="ir.actions.act_window">-->
+        <!--<field name="name">Amazon Orders</field>-->
+        <!--<field name="res_model">amazon.sale.order</field>-->
+        <!--<field name="view_type">form</field>-->
+        <!--<field name="view_mode">tree,form</field>-->
+        <!--<field name="view_id" ref="view_amazon_order_tree"/>-->
+    <!--</record>-->
 
 
 

@@ -95,4 +95,4 @@ class AmazonBrandBan(models.Model):
     _description = 'Amazon Brand Ban'
 
     backend_id = fields.Many2one('amazon.backend')
-    brand_ban = fields.Many2one('product.brand')
+    # brand_ban = fields.Many2one('product.brand')

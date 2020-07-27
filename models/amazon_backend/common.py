@@ -8,9 +8,10 @@ import os
 from datetime import datetime, timedelta
 
 from decorator import contextmanager
+
+from odoo.addons.connector.models import checkpoint
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from odoo.addons.connector.checkpoint import checkpoint
 
 from ...components.backend_adapter import AmazonAPI
 from odoo.addons.queue_job.job import STARTED, ENQUEUED, PENDING
@@ -369,7 +370,7 @@ class AmazonBackend(models.Model):
 
             i = 0
             for message in messages:
-                print 'Message number:' + str(i) + ' message:' + str(message.id) + ' date: ' + datetime.now().isoformat()
+                print ('Message number:' + str(i) + ' message:' + str(message.id) + ' date: ' + datetime.now().isoformat())
                 i += 1
                 delayable = product_binding_model.with_delay(priority=7, eta=datetime.now())
                 filters = {'method':'process_price_message', 'message':message.id}

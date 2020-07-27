@@ -3,8 +3,8 @@
 # © 2018 Halltic eSolutions S.L.
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 # This project is based on connector-magneto, developed by Camptocamp SA
+from io import StringIO
 
-import StringIO
 import boto3
 import logging
 import dateutil.parser
@@ -17,7 +17,6 @@ from odoo import api
 from odoo.fields import Datetime
 from odoo.addons.component.core import AbstractComponent
 from odoo.addons.queue_job.exception import FailedJobError, RetryableJobError
-from odoo.modules.registry import RegistryManager
 
 #from ..models.config.common import MAX_NUMBER_SQS_MESSAGES_TO_RECEIVE
 from ..mws.mws import MWSError
@@ -1023,13 +1022,13 @@ class AmazonAPI(object):
     def _get_data_report(self, report_id, headers):
         try:
             assert report_id
-        except AssertionError, e:
+        except AssertionError as e:
             _logger.error("report_api('%s') failed", '_get_data_report.report_id')
             raise e
 
         try:
             assert headers
-        except AssertionError, e:
+        except AssertionError as e:
             _logger.error("report_api('%s') failed", '_get_data_report.headers')
             raise e
 
@@ -1064,13 +1063,13 @@ class AmazonAPI(object):
     def _get_result_feed(self, feed_id, headers):
         try:
             assert feed_id
-        except AssertionError, e:
+        except AssertionError as e:
             _logger.error("feed_api('%s') failed", '_get_result_feed.feed_id')
             raise e
 
         try:
             assert headers
-        except AssertionError, e:
+        except AssertionError as e:
             _logger.error("feed_api('%s') failed", '_get_result_feed.headers')
             raise e
 
@@ -1139,6 +1138,19 @@ class AmazonAPI(object):
                 continue
 
             data_prod_market = self._get_product_market_data_line(encoding=encoding, marketplace=marketplace, line=line)
+            try:
+                fee = self._get_my_estimate_fee(marketplace_id=marketplace.id_mws,
+                                                type_sku_asin='SellerSKU',
+                                                id_type=data_prod_market['sku'],
+                                                price=data_prod_market['price_unit'],
+                                                currency=data_prod_market['currency_price_unit'])
+                if fee:
+                    data_prod_market['fee'] = fee
+            except Exception as e:
+                _logger.error("Recovering price's product from product_api (%s) failed with sku %s and marketplace %s",
+                              'extract_info_product',
+                              data_prod_market['sku'],
+                              marketplace.name)
             name = data_prod_market['title']
 
             # If the product doesn't exist we get all data

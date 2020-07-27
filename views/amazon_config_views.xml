@@ -129,7 +129,7 @@
         <field name="arch" type="xml">
             <tree string="Amazon product brand ban" editable="bottom">
                 <field name="backend_id"/>
-                <field name="brand_ban"/>
+                <!--<field name="brand_ban"/>-->
             </tree>
         </field>
     </record>

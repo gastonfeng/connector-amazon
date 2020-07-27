@@ -5,7 +5,8 @@
 import inspect
 import logging
 import os
-import urllib2
+import urllib
+
 import base64
 
 from odoo.addons.component.core import Component
@@ -187,9 +188,9 @@ class ProductImporter(Component):
     def _get_binary_image(self, image_url):
         url = image_url.encode('utf8')
         try:
-            request = urllib2.Request(url)
-            binary = urllib2.urlopen(request)
-        except urllib2.HTTPError as err:
+            request = urllib.request.Request(url)
+            binary = urllib.request.urlopen(request)
+        except urllib.request.HTTPError as err:
             if err.code == 404:
                 # the image is just missing, we skip it
                 return

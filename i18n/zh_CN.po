@@ -1,0 +1,804 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* connector_amazon
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 11.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-07-23 06:30+0000\n"
+"PO-Revision-Date: 2020-07-23 15:04+0800\n"
+"Last-Translator: <>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: \n"
+"Language: zh_CN\n"
+"X-Generator: Poedit 2.3.1\n"
+
+#. module: connector_amazon
+#: sql_constraint:amazon.backend:0
+msgid "A backend with the same sale prefix already exists"
+msgstr "已存在具有相同销售前缀的后端"
+
+#. module: connector_amazon
+#: sql_constraint:amazon.binding:0 sql_constraint:amazon.feed:0
+#: sql_constraint:amazon.order.return:0 sql_constraint:amazon.product.product:0
+#: sql_constraint:amazon.report:0 sql_constraint:amazon.res.partner:0
+#: sql_constraint:amazon.sale.order:0 sql_constraint:amazon.sale.order.line:0
+msgid "A binding already exists with the same Amazon ID."
+msgstr "Amazon ID已存在."
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_partner_form
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_partner_tree
+msgid "Alias"
+msgstr "别名"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/components/importer.py:187
+#, python-format
+msgid "Already up-to-date."
+msgstr "已是最新."
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_root
+#: model:ir.ui.view,arch_db:connector_amazon.product_template_form_view
+#: model:ir.ui.view,arch_db:connector_amazon.view_partner_get_stock_supplier_form
+msgid "Amazon"
+msgstr "Amazon"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.ir_cron_amz_export_product_product_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.ir_cron_amz_export_product_product
+#: model:ir.cron,name:connector_amazon.ir_cron_amz_export_product_product
+msgid "Amazon - Export Products"
+msgstr "Amazon - 导出产品"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.scheduler_fix_data_connector_amazon_action_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.scheduler_fix_data_connector_amazon_action
+#: model:ir.cron,name:connector_amazon.scheduler_fix_data_connector_amazon_action
+msgid "Amazon - Fix data"
+msgstr "Amazon - 数据修复"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.scheduler_get_price_changes_connector_amazon_action_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.scheduler_get_price_changes_connector_amazon_action
+#: model:ir.cron,name:connector_amazon.scheduler_get_price_changes_connector_amazon_action
+msgid "Amazon - Get changes on product prices"
+msgstr "Amazon - 获取价格变化"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.ir_cron_amz_import_product_product_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.ir_cron_amz_import_product_product
+#: model:ir.cron,name:connector_amazon.ir_cron_amz_import_product_product
+msgid "Amazon - Import Products"
+msgstr "Amazon -导入场频"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.ir_cron_amz_import_sale_orders_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.ir_cron_amz_import_sale_orders
+#: model:ir.cron,name:connector_amazon.ir_cron_amz_import_sale_orders
+msgid "Amazon - Import Sales Orders"
+msgstr "Amazon - 导入销售订单"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.scheduler_throw_feeds_connector_amazon_action_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.scheduler_throw_feeds_connector_amazon_action
+#: model:ir.cron,name:connector_amazon.scheduler_throw_feeds_connector_amazon_action
+msgid "Amazon - Throw feeds"
+msgstr "亚马逊-投稿"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.scheduler_get_initial_prices_action_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.scheduler_get_initial_prices_action
+#: model:ir.cron,name:connector_amazon.scheduler_get_initial_prices_action
+msgid "Amazon - Throw jobs for get prices of products the first time"
+msgstr "亚马逊-首次投入工作以获取产品价格"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.scheduler_throw_jobs_for_price_changes_action_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.scheduler_throw_jobs_for_price_changes_action
+#: model:ir.cron,name:connector_amazon.scheduler_throw_jobs_for_price_changes_action
+msgid "Amazon - Throw jobs for product change prices"
+msgstr "Amazon -为产品变更价格提供工作"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.ir_cron_amz_update_product_stock_prices_ir_actions_server
+#: model:ir.cron,cron_name:connector_amazon.ir_cron_amz_update_product_stock_prices
+#: model:ir.cron,name:connector_amazon.ir_cron_amz_update_product_stock_prices
+msgid "Amazon - Update Stock and Prices"
+msgstr "Amazon - 更新库存和价格"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_backend
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_backend_tree
+msgid "Amazon Backend"
+msgstr "Amazon 后端"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_backend
+msgid "Amazon Backends"
+msgstr "Amazon 后端"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_binding
+msgid "Amazon Binding (abstract)"
+msgstr "Amazon Binding (abstract)"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_brand_ban
+msgid "Amazon Brand Ban"
+msgstr "Amazon品牌禁令"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_configuration
+msgid "Amazon Configuration Settings"
+msgstr "Amazon配置设置"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_list_products_export_wizard
+msgid "Amazon Export Products Wizard"
+msgstr "Amazon导出产品向导"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_feed
+msgid "Amazon Feed"
+msgstr "Amazon Feed"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_feed_tothrow_tree
+msgid "Amazon Feeds To Throw"
+msgstr "Amazon Feeds To Throw"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_orders_import_wizard
+msgid "Amazon Import Orders Wizard"
+msgstr "Amazon订单导入向导"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_order_import_wizard
+msgid "Amazon Import Single Order Wizard"
+msgstr "Amazon单个订单导入向导"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_marketplace_tree
+msgid "Amazon Marketplace Product Data"
+msgstr "Amazon市场产品数据"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_marketplace
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_marketplace_tree
+msgid "Amazon Marketplaces"
+msgstr "Amazon市场"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_res_partner
+msgid "Amazon Partner"
+msgstr "Amazon客户"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_partner
+msgid "Amazon Partners"
+msgstr "Amazon客户"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_product_product
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_tree
+msgid "Amazon Product"
+msgstr "Amazon产品"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_historic_offer_product_tree
+#: model:ir.ui.view,arch_db:connector_amazon.view_offer_product_tree
+msgid "Amazon Product Offer"
+msgstr "Amazon产品报价"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_product_product_detail
+msgid "Amazon Product Variant on Every Marketplace"
+msgstr "每个市场上的Amazon产品变体"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_product
+msgid "Amazon Products"
+msgstr "Amazon产品"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_order_return
+#: model:ir.model,name:connector_amazon.model_amazon_report
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_return_tree
+msgid "Amazon Return"
+msgstr "Amazon退货"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_return
+msgid "Amazon Returns"
+msgstr "Amazon退货"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_sqs_account_tree
+msgid "Amazon SQS account"
+msgstr "Amazon SQS 帐户"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_sale_order
+msgid "Amazon Sale Order"
+msgstr "Amazon销售订单"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_sale_order_line
+msgid "Amazon Sale Order Line"
+msgstr "Amazon销售订单明细"
+
+#. module: connector_amazon
+#: model:crm.team,name:connector_amazon.amazon_crm_team
+msgid "Amazon Sales"
+msgstr "Amazon销售"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_config
+msgid "Amazon Settings"
+msgstr "Amazon设置"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_mws_control_quota_tree
+msgid "Amazon control request"
+msgstr "Amazon控制请求"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Amazon product"
+msgstr "Amazon产品"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_brand_ban_tree
+msgid "Amazon product brand ban"
+msgstr "Amazon产品品牌禁令"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_product_marketplace
+msgid "Amazon product marketplace data"
+msgstr "Amazon产品市场数据"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.product_template_search_view_amazon_filter
+msgid "Amazon products"
+msgstr "Amazon产品"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/amazon_backend/common.py:449
+#, python-format
+msgid "An error has been produced"
+msgstr "产生了一个错误"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_marketplace_tree
+msgid "Automatic change price"
+msgstr "自动更改价格"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_backend
+msgid "Backends"
+msgstr "后端"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
+msgid "Barcode"
+msgstr "条码"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_set_margins_to_prod_form
+msgid "Cancel"
+msgstr "取消"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_export_products_form
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_import_order_form
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_import_orders_form
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_update_orders_form
+msgid "Cancelar"
+msgstr "取消者"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_configuration
+msgid "Configuration"
+msgstr "配置"
+
+#. module: connector_amazon
+#: model:ir.module.category,name:connector_amazon.module_category_connector_amazon
+msgid "Connector Amazon"
+msgstr "Amazon连接器"
+
+#. module: connector_amazon
+#: model:res.groups,name:connector_amazon.group_connector_amazon_manager
+msgid "Connector Amazon Manager"
+msgstr "连接器Amazon Manager"
+
+#. module: connector_amazon
+#: model:res.groups,name:connector_amazon.group_connector_amazon_user
+msgid "Connector Amazon User"
+msgstr "Connector Amazon User"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_res_partner
+msgid "Contact"
+msgstr "联系人"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
+msgid "Default code"
+msgstr "Default code"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_export_products_form
+msgid "Export"
+msgstr "导出"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_export_products
+msgid "Export products to Amazon"
+msgstr "导出产品到Amazon"
+
+#. module: connector_amazon
+#: model:ir.actions.server,name:connector_amazon.action_init_wizard_search_products_to_amazon_export
+msgid "Export to Amazon"
+msgstr "导出到Amazon"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Fee"
+msgstr "费用"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_feeds
+msgid "Feeds"
+msgstr "Feeds"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_import_order_form
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_import_orders_form
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_update_orders_form
+msgid "Import"
+msgstr "导入"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_backend_form
+msgid "Import Order"
+msgstr "导入订单"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_backend_form
+msgid "Import Orders"
+msgstr "导入订单"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_backend_form
+msgid "Import templates"
+msgstr "导入模版"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_product_supplierinfo
+msgid "Information about a product vendor"
+msgstr "供应商信息"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Item id"
+msgstr "Item id"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Item price"
+msgstr "价格"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Lastest ship date"
+msgstr "最近发货日期"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Lastest ship delivery"
+msgstr "最新运送"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_mws_control_quota
+msgid "MWS control quota"
+msgstr "MWS控制配额"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_mws_control_quota
+msgid "MWS control quota config"
+msgstr "MWS控制配额配置"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_marketplace
+msgid "Marketplace"
+msgstr "市场"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
+msgid "Name"
+msgstr "名称"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Name account"
+msgstr "账户名称"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.product_template_search_view_amazon_filter
+msgid "Non Amazon products"
+msgstr "非Amazon产品"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/components/exporter.py:368
+#: code:addons/connector_amazon/components/exporter.py:373
+#, python-format
+msgid "Nothing to export."
+msgstr "没有东西可以导出."
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_product_search
+msgid "Odoo product"
+msgstr "Odoo product"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Order Id"
+msgstr "Order Id"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Order fee"
+msgstr "订单费用"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Order lines"
+msgstr "订单明细"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Order status"
+msgstr "订单状态"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Orders"
+msgstr "订单"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_partner_form
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_partner_tree
+msgid "Partner on odoo"
+msgstr "Partner on odoo"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_partners
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_partner_tree
+msgid "Partners"
+msgstr "合作伙伴"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_product_product
+msgid "Product"
+msgstr "产品"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_brand_ban
+msgid "Product Brand Ban"
+msgstr "产品品牌禁令"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_product_template
+msgid "Product Template"
+msgstr "产品模板"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_brand_ban
+msgid "Product brand ban"
+msgstr "产品品牌禁令"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_product_to_export_wizard
+msgid "Product to export to amazon Wizard"
+msgstr "Amazon导出产品向导"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_products
+#: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
+msgid "Products"
+msgstr "产品"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_products_market
+msgid "Products marketplace data"
+msgstr "产品市场数据"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_products_on_amazon
+msgid "Products on Amazon"
+msgstr "Amazon产品"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Purchase date"
+msgstr "购买日期"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Quantity ordered"
+msgstr "订购数量"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Quantity shipped"
+msgstr "出货数量"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_sale_order
+msgid "Quotation"
+msgstr "报价单"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/components/importer.py:178
+#, python-format
+msgid "Record does no longer exist in Amazon"
+msgstr "记录在Amazon中不再存在"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/components/exporter.py:375
+#, python-format
+msgid "Record exported with ID %s on Amazon."
+msgstr "在Amazon上以ID %s 导出的记录."
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/sale_order/common.py:193
+#, python-format
+msgid "Reopen sales order %s"
+msgstr "重新打开销售订单 %s"
+
+#. module: connector_amazon
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_returns
+msgid "Returns"
+msgstr "退货"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_amazon_sqs_account
+#: model:ir.ui.menu,name:connector_amazon.menu_amazon_sqs_account
+msgid "SQS Account"
+msgstr "SQS 帐户"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
+msgid "Sale chanel"
+msgstr "Sale chanel"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_sale_order_line
+msgid "Sales Order Line"
+msgstr "销售订单行"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_product_search
+msgid "Search Amazon Products"
+msgstr "搜索Amazon产品"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_partner_get_stock_supplier_form
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_set_margins_to_prod_form
+msgid "Set margins"
+msgstr "设置边距"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_set_margins_to_prod_form
+msgid "Set to products"
+msgstr "设置为产品"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Ship price"
+msgstr "发货价格"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_account_tax
+msgid "Tax"
+msgstr "税"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:771
+#, python-format
+msgid "The configuration beetwen delivery carrier and marketplace(%s) of the backend(%s) is missing for the product: '%s'"
+msgstr "产品缺少后端（ %s ）的配置beetwen交付载体和市场（ %s ）：'%s'"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/wizards/wizard_export_products.py:147
+#, python-format
+msgid "The margin must be a positive number greater than one"
+msgstr "边距必须为大于1的正数"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.wizard_set_margins_to_prod_form
+msgid "The products of supplier set these fields."
+msgstr "供应商的产品设置了这些领域。"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/wizards/wizard_export_products.py:144
+#, python-format
+msgid "There aren'export_recordt products to export"
+msgstr "没有'export_recordt产品要出口"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/wizards/wizard_export_products.py:84
+#, python-format
+msgid "There aren't backends to get products"
+msgstr "没有后端获得产品"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/wizards/wizard_export_products.py:150
+#, python-format
+msgid "There aren't marketplaces to export"
+msgstr "没有市场可以导出"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/wizards/wizard_export_products.py:128
+#, python-format
+msgid "There aren't products to export"
+msgstr "没有产品可以导出"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Total fee"
+msgstr "费用总计"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Total item price"
+msgstr "商品总价"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
+msgid "Total ship price"
+msgstr "发货总价"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/account_tax/common.py:77
+#, python-format
+msgid "Unable to mix any taxes being price included with taxes affecting the base amount but not included in price."
+msgstr "无法将价格中包含的任何税费与影响基本金额但不包含在价格中的税费混合在一起。"
+
+#. module: connector_amazon
+#: model:ir.ui.view,arch_db:connector_amazon.view_amazon_backend_form
+msgid "Update Orders"
+msgstr "更新订单"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_view_wizard_set_margins
+msgid "Wizard set margins"
+msgstr "向导设置边距"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_view_wizard_amazon_export_product
+msgid "Wizard to export products"
+msgstr "导出产品向导"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_view_wizard_amazon_import_order
+#: model:ir.actions.act_window,name:connector_amazon.action_view_wizard_amazon_import_orders
+msgid "Wizard to import orders"
+msgstr "订单导入向导"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_change_prices_flag_margins_wizard
+msgid "Wizard to set flag for change prices and margins"
+msgstr "向导设置更改价格和保证金的标志"
+
+#. module: connector_amazon
+#: model:ir.actions.act_window,name:connector_amazon.action_view_wizard_amazon_update_orders
+msgid "Wizard to update orders"
+msgstr "更新订单向导"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/wizards/wizard_export_products.py:91
+#, python-format
+msgid "You must select one or more products to export"
+msgstr "您必须选择一种或多种产品才能导出"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_marketplace
+msgid "amazon.config.marketplace"
+msgstr "amazon.config.marketplace"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_order_item_condition
+msgid "amazon.config.order.item.condition"
+msgstr "amazon.config.order.item.condition"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_order_levelservice
+msgid "amazon.config.order.levelservice"
+msgstr "amazon.config.order.levelservice"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_order_status
+msgid "amazon.config.order.status"
+msgstr "amazon.config.order.status"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_order_status_updatable
+msgid "amazon.config.order.status.updatable"
+msgstr "amazon.config.order.status.updatable"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_product_category
+msgid "amazon.config.product.category"
+msgstr "amazon.config.product.category"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_product_type
+msgid "amazon.config.product.type"
+msgstr "amazon.config.product.type"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_settings
+msgid "amazon.config.settings"
+msgstr "amazon.config.settings"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_sqs_account
+msgid "amazon.config.sqs.account"
+msgstr "amazon.config.sqs.account"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_config_sqs_message
+msgid "amazon.config.sqs.message"
+msgstr "amazon.config.sqs.message"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_control_date_request
+msgid "amazon.control.date.request"
+msgstr "amazon.control.date.request"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_control_request
+msgid "amazon.control.request"
+msgstr "amazon.control.request"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_feed_tothrow
+msgid "amazon.feed.tothrow"
+msgstr "amazon.feed.tothrow"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_historic_product_offer
+msgid "amazon.historic.product.offer"
+msgstr "amazon.historic.product.offer"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_product_offer
+msgid "amazon.product.offer"
+msgstr "amazon.product.offer"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_product_uom
+msgid "amazon.product.uom"
+msgstr "amazon.product.uom"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_report_product_ranking_sales
+msgid "amazon.report.product.ranking.sales"
+msgstr "amazon.report.product.ranking.sales"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_report_product_to_create
+msgid "amazon.report.product.to.create"
+msgstr "amazon.report.product.to.create"
+
+#. module: connector_amazon
+#: model:ir.model,name:connector_amazon.model_amazon_shipping_template
+msgid "amazon.shipping.template"
+msgstr "amazon.shipping.template"
