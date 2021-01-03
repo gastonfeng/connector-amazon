@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-07-23 06:30+0000\n"
-"PO-Revision-Date: 2020-07-23 15:04+0800\n"
+"POT-Creation-Date: 2020-08-08 04:32+0000\n"
+"PO-Revision-Date: 2020-08-08 12:45+0800\n"
 "Last-Translator: <>\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -75,7 +75,7 @@ msgstr "Amazon - 获取价格变化"
 #: model:ir.cron,cron_name:connector_amazon.ir_cron_amz_import_product_product
 #: model:ir.cron,name:connector_amazon.ir_cron_amz_import_product_product
 msgid "Amazon - Import Products"
-msgstr "Amazon -导入场频"
+msgstr "Amazon -导入产品"
 
 #. module: connector_amazon
 #: model:ir.actions.server,name:connector_amazon.ir_cron_amz_import_sale_orders_ir_actions_server
@@ -269,6 +269,12 @@ msgid "Amazon products"
 msgstr "Amazon产品"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:306
+#, python-format
+msgid "Amount of fee"
+msgstr "收费金额"
+
+#. module: connector_amazon
 #: code:addons/connector_amazon/models/amazon_backend/common.py:449
 #, python-format
 msgid "An error has been produced"
@@ -280,6 +286,12 @@ msgid "Automatic change price"
 msgstr "自动更改价格"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:33
+#, python-format
+msgid "Backend name"
+msgstr "后端名称"
+
+#. module: connector_amazon
 #: model:ir.ui.menu,name:connector_amazon.menu_amazon_backend
 msgid "Backends"
 msgstr "后端"
@@ -288,6 +300,18 @@ msgstr "后端"
 #: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
 msgid "Barcode"
 msgstr "条码"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:50
+#, python-format
+msgid "Brand"
+msgstr "品牌"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:291
+#, python-format
+msgid "Buybox price"
+msgstr "买价"
 
 #. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.wizard_set_margins_to_prod_form
@@ -301,6 +325,25 @@ msgstr "取消"
 #: model:ir.ui.view,arch_db:connector_amazon.wizard_update_orders_form
 msgid "Cancelar"
 msgstr "取消者"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:283
+#, python-format
+msgid "Category"
+msgstr "类别"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:67
+#: code:addons/connector_amazon/models/product/common.py:297
+#, python-format
+msgid "Change prices"
+msgstr "更改价格"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:53
+#, python-format
+msgid "Computed Quantity"
+msgstr "计算数量"
 
 #. module: connector_amazon
 #: model:ir.ui.menu,name:connector_amazon.menu_amazon_configuration
@@ -328,9 +371,27 @@ msgid "Contact"
 msgstr "联系人"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:51
+#, python-format
+msgid "Created At (on Amazon)"
+msgstr "创建于（在亚马逊上）"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:270
+#, python-format
+msgid "Currency price"
+msgstr "货币价格"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:272
+#, python-format
+msgid "Currency price ship"
+msgstr "发货价格"
+
+#. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
 msgid "Default code"
-msgstr "Default code"
+msgstr "预设密码"
 
 #. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.wizard_export_products_form
@@ -356,6 +417,18 @@ msgstr "费用"
 #: model:ir.ui.menu,name:connector_amazon.menu_amazon_feeds
 msgid "Feeds"
 msgstr "Feeds"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:59
+#, python-format
+msgid "Height"
+msgstr "高度："
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:317
+#, python-format
+msgid "Historic offers of the product"
+msgstr "产品的历史报价"
 
 #. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.wizard_import_order_form
@@ -385,6 +458,18 @@ msgid "Information about a product vendor"
 msgstr "供应商信息"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:289
+#, python-format
+msgid "Is the buybox winner"
+msgstr "是购买框的赢家"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:290
+#, python-format
+msgid "Is the lowest price"
+msgstr "是最低价"
+
+#. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
 msgid "Item id"
 msgstr "Item id"
@@ -405,6 +490,18 @@ msgid "Lastest ship delivery"
 msgstr "最新运送"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:60
+#, python-format
+msgid "Length"
+msgstr "长度"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:292
+#, python-format
+msgid "Lowest total price"
+msgstr "最低总价"
+
+#. module: connector_amazon
 #: model:ir.actions.act_window,name:connector_amazon.action_amazon_mws_control_quota
 msgid "MWS control quota"
 msgstr "MWS控制配额"
@@ -415,9 +512,47 @@ msgid "MWS control quota config"
 msgstr "MWS控制配额配置"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:300
+#, python-format
+msgid "Margin amount"
+msgstr "保证金金额"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:301
+#, python-format
+msgid "Margin percentage"
+msgstr "保证金百分比"
+
+#. module: connector_amazon
 #: model:ir.ui.menu,name:connector_amazon.menu_amazon_marketplace
 msgid "Marketplace"
 msgstr "市场"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:269
+#, python-format
+msgid "Max allowed price"
+msgstr "最高允许价格"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:69
+#: code:addons/connector_amazon/models/product/common.py:299
+#, python-format
+msgid "Maximal margin"
+msgstr "最大保证金"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:268
+#, python-format
+msgid "Min allowed price"
+msgstr "最低允许价格"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:68
+#: code:addons/connector_amazon/models/product/common.py:298
+#, python-format
+msgid "Minimal margin"
+msgstr "最小保证金"
 
 #. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.view_products_can_be_exported_to_amazon_tree
@@ -445,6 +580,12 @@ msgstr "没有东西可以导出."
 #: model:ir.ui.view,arch_db:connector_amazon.view_amazon_product_product_search
 msgid "Odoo product"
 msgstr "Odoo product"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:311
+#, python-format
+msgid "Offers of the product"
+msgstr "产品报价"
 
 #. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_form
@@ -484,7 +625,27 @@ msgid "Partners"
 msgstr "合作伙伴"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:307
+#, python-format
+msgid "Percentage fee of Amazon sale"
+msgstr "亚马逊销售的百分比费"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:267
+#, python-format
+msgid "Price"
+msgstr "价格"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:271
+#, python-format
+msgid "Price of ship"
+msgstr "发货价格"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:35
 #: model:ir.model,name:connector_amazon.model_product_product
+#, python-format
 msgid "Product"
 msgstr "产品"
 
@@ -504,9 +665,27 @@ msgid "Product brand ban"
 msgstr "产品品牌禁令"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:282
+#, python-format
+msgid "Product created at"
+msgstr "产品创建于"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:58
+#, python-format
+msgid "Product data on marketplaces"
+msgstr "市场产品数据"
+
+#. module: connector_amazon
 #: model:ir.model,name:connector_amazon.model_amazon_product_to_export_wizard
 msgid "Product to export to amazon Wizard"
 msgstr "Amazon导出产品向导"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:266
+#, python-format
+msgid "Product_name"
+msgstr "Product_name"
 
 #. module: connector_amazon
 #: model:ir.ui.menu,name:connector_amazon.menu_amazon_products
@@ -605,6 +784,32 @@ msgid "Ship price"
 msgstr "发货价格"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:293
+#, python-format
+msgid "Shipping template name"
+msgstr "Shipping template name"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:280
+#: code:addons/connector_amazon/models/product/common.py:305
+#, python-format
+msgid "Status"
+msgstr "状态"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:281
+#, python-format
+msgid "Stock"
+msgstr "库存"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:66
+#: code:addons/connector_amazon/models/product/common.py:296
+#, python-format
+msgid "Stock shyncronization"
+msgstr "库存同步"
+
+#. module: connector_amazon
 #: model:ir.model,name:connector_amazon.model_account_tax
 msgid "Tax"
 msgstr "税"
@@ -651,6 +856,12 @@ msgid "There aren't products to export"
 msgstr "没有产品可以导出"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:76
+#, python-format
+msgid "Time to get since we received an order to send this"
+msgstr "自从我们收到发送该订单的订单以来的时间"
+
+#. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
 msgid "Total fee"
 msgstr "费用总计"
@@ -661,9 +872,21 @@ msgid "Total item price"
 msgstr "商品总价"
 
 #. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:273
+#, python-format
+msgid "Total price"
+msgstr "总价"
+
+#. module: connector_amazon
 #: model:ir.ui.view,arch_db:connector_amazon.view_amazon_order_line_tree
 msgid "Total ship price"
 msgstr "发货总价"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:73
+#, python-format
+msgid "Type of unit"
+msgstr "单位类型"
 
 #. module: connector_amazon
 #: code:addons/connector_amazon/models/account_tax/common.py:77
@@ -675,6 +898,24 @@ msgstr "无法将价格中包含的任何税费与影响基本金额但不包含
 #: model:ir.ui.view,arch_db:connector_amazon.view_amazon_backend_form
 msgid "Update Orders"
 msgstr "更新订单"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:52
+#, python-format
+msgid "Updated At (on Amazon)"
+msgstr "更新日期"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:61
+#, python-format
+msgid "Weight"
+msgstr "重量"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:62
+#, python-format
+msgid "Width"
+msgstr "宽度"
 
 #. module: connector_amazon
 #: model:ir.actions.act_window,name:connector_amazon.action_view_wizard_set_margins
@@ -802,3 +1043,9 @@ msgstr "amazon.report.product.to.create"
 #: model:ir.model,name:connector_amazon.model_amazon_shipping_template
 msgid "amazon.shipping.template"
 msgstr "amazon.shipping.template"
+
+#. module: connector_amazon
+#: code:addons/connector_amazon/models/product/common.py:48
+#, python-format
+msgid "status"
+msgstr "状态"

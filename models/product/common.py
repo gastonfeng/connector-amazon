@@ -30,13 +30,13 @@ class AmazonProductProduct(models.Model):
     _inherits = {'product.product':'odoo_id'}
     _description = 'Amazon Product'
 
-    backend_name = fields.Char('Backend name', related='backend_id.name')
+    backend_name = fields.Char(_('Backend name'), related='backend_id.name')
     odoo_id = fields.Many2one(comodel_name='product.product',
-                              string='Product',
+                              string=_('Product'),
                               required=True,
                               ondelete='restrict')
 
-    asin = fields.Char('ASIN', readonly=True)
+    asin = fields.Char('ASIN')
     id_type_product = fields.Selection(selection=[('GCID', 'GCID'),
                                                   ('UPC', 'UPC'),
                                                   ('EAN', 'EAN'),
@@ -45,35 +45,35 @@ class AmazonProductProduct(models.Model):
                                        string='Type product Id')
 
     id_product = fields.Char()
-    status = fields.Char('status', required=False)
+    status = fields.Char(_('status'), required=False)
     sku = fields.Char('SKU', required=True, readonly=True)
-    brand = fields.Char('Brand')
-    created_at = fields.Date('Created At (on Amazon)')
-    updated_at = fields.Date('Updated At (on Amazon)')
-    amazon_qty = fields.Float(string='Computed Quantity',
+    brand = fields.Char(_('Brand'))
+    created_at = fields.Date(_('Created At (on Amazon)'))
+    updated_at = fields.Date(_('Updated At (on Amazon)'))
+    amazon_qty = fields.Float(string=_('Computed Quantity'),
                               help="Last computed quantity to send "
                                    "on Amazon.")
 
     product_product_market_ids = fields.One2many('amazon.product.product.detail', 'product_id',
-                                                 string='Product data on marketplaces', copy=True)
-    height = fields.Float('Height', default=0)
-    length = fields.Float('Length', default=0)
-    weight = fields.Float('Weight', default=0)
-    width = fields.Float('Width', default=0)
+                                                 string=_('Product data on marketplaces'), copy=True)
+    height = fields.Float(_('Height'), default=0)
+    length = fields.Float(_('Length'), default=0)
+    weight = fields.Float(_('Weight'), default=0)
+    width = fields.Float(_('Width'), default=0)
 
     # Min and max margin stablished for the calculation of the price on product and product price details if these do not be informed
     # If these fields do not be informed, gets the margin limits of backend
-    stock_sync = fields.Boolean('Stock shyncronization', default=True)
-    change_prices = fields.Selection(string='Change prices', selection=[('0', 'No'), ('1', 'Yes'), ])
-    min_margin = fields.Float('Minimal margin', default=None)
-    max_margin = fields.Float('Maximal margin', default=None)
+    stock_sync = fields.Boolean(_('Stock shyncronization'), default=True)
+    change_prices = fields.Selection(string=_('Change prices'), selection=[('0', 'No'), ('1', 'Yes'), ])
+    min_margin = fields.Float(_('Minimal margin'), default=None)
+    max_margin = fields.Float(_('Maximal margin'), default=None)
     units_to_change = fields.Float(digits=(3, 2))
     type_unit_to_change = fields.Selection(selection=[('price', 'Price (€)'),
                                                       ('percentage', 'Percentage (%)')],
-                                           string='Type of unit',
+                                           string=_('Type of unit'),
                                            default='price')
 
-    handling_time = fields.Integer('Time to get since we received an order to send this')
+    handling_time = fields.Integer(_('Time to get since we received an order to send this'))
 
     RECOMPUTE_QTY_STEP = 1000  # products at a time
 
@@ -263,58 +263,58 @@ class AmazonProductProductDetail(models.Model):
                                  readonly=True)
 
     sku = fields.Char('SKU', related='product_id.sku')
-    title = fields.Char('Product_name', required=False)
-    price = fields.Float('Price', required=False)  # This price have the tax included
-    min_allowed_price = fields.Float('Min allowed price', required=False)  # This is the min price allowed
-    max_allowed_price = fields.Float('Max allowed price', required=False)  # This is the max price allowed
-    currency_price = fields.Many2one('res.currency', 'Currency price', required=False)
-    price_ship = fields.Float('Price of ship', required=False)  # This price have the tax included
-    currency_ship_price = fields.Many2one('res.currency', 'Currency price ship', required=False)
-    total_price = fields.Char('Total price', compute='_compute_margin_amount_based_on_price')
+    title = fields.Char(_('Product_name'), required=False)
+    price = fields.Float(_('Price'), required=False)  # This price have the tax included
+    min_allowed_price = fields.Float(_('Min allowed price'), required=False)  # This is the min price allowed
+    max_allowed_price = fields.Float(_('Max allowed price'), required=False)  # This is the max price allowed
+    currency_price = fields.Many2one('res.currency', _('Currency price'), required=False)
+    price_ship = fields.Float(_('Price of ship'), required=False)  # This price have the tax included
+    currency_ship_price = fields.Many2one('res.currency', _('Currency price ship'), required=False)
+    total_price = fields.Char(_('Total price'), compute='_compute_margin_amount_based_on_price')
     marketplace_id = fields.Many2one('amazon.config.marketplace', "marketplace_id")
     status = fields.Selection(selection=[('Active', 'Active'),
                                          ('Inactive', 'Inactive'),
                                          ('Unpublished', 'Unpublished'),
                                          ('Submmited', 'Submmited'),
                                          ('Incomplete', 'Incomplete'), ],
-                              string='Status', default='Active')
-    stock = fields.Integer('Stock')
-    date_created = fields.Datetime('Product created at', required=False)
-    category_id = fields.Many2one('amazon.config.product.category', 'Category',
+                              string=_('Status'), default='Active')
+    stock = fields.Integer(_('Stock'))
+    date_created = fields.Datetime(_('Product created at'), required=False)
+    category_id = fields.Many2one('amazon.config.product.category', _('Category'),
                                   default=lambda self:self.env['amazon.config.product.category'].search(
                                       [('name', '=', 'default')]))
     category_searched = fields.Boolean(default=False)
     first_price_searched = fields.Boolean(default=False)
     first_offer_searched = fields.Boolean(default=False)
-    has_buybox = fields.Boolean(string='Is the buybox winner', default=False)
-    has_lowest_price = fields.Boolean(string='Is the lowest price', default=False)
-    buybox_price = fields.Float('Buybox price')
-    lowest_price = fields.Float('Lowest total price')
-    merchant_shipping_group = fields.Char('Shipping template name')
+    has_buybox = fields.Boolean(string=_('Is the buybox winner'), default=False)
+    has_lowest_price = fields.Boolean(string=_('Is the lowest price'), default=False)
+    buybox_price = fields.Float(_('Buybox price'))
+    lowest_price = fields.Float(_('Lowest total price'))
+    merchant_shipping_group = fields.Char(_('Shipping template name'))
 
     # Min and max margin stablished for the calculation of the price on product and product price details if these do not be informed
-    stock_sync = fields.Boolean('Stock shyncronization', default=True)
-    change_prices = fields.Selection(string='Change prices', selection=[('0', 'No'), ('1', 'Yes'), ])
-    min_margin = fields.Float('Minimal margin', default=None)
-    max_margin = fields.Float('Maximal margin', default=None)
-    margin_amount = fields.Float('Margin amount', compute='_compute_margin_amount_based_on_price')
-    margin_percentage = fields.Float('Margin percentage', digits=(3, 2))
+    stock_sync = fields.Boolean(_('Stock shyncronization'), default=True)
+    change_prices = fields.Selection(string=_('Change prices'), selection=[('0', 'No'), ('1', 'Yes'), ])
+    min_margin = fields.Float(_('Minimal margin'), default=None)
+    max_margin = fields.Float(_('Maximal margin'), default=None)
+    margin_amount = fields.Float(_('Margin amount'), compute='_compute_margin_amount_based_on_price')
+    margin_percentage = fields.Float(_('Margin percentage'), digits=(3, 2))
     units_to_change = fields.Float(digits=(3, 2))
     type_unit_to_change = fields.Selection(selection=[('price', 'Price (€)'),
                                                       ('percentage', 'Percentage (%)')],
-                                           string='Status', default='price')
-    total_fee = fields.Float('Amount of fee')
-    percentage_fee = fields.Float('Percentage fee of Amazon sale')
+                                           string=_('Status'), default='price')
+    total_fee = fields.Float(_('Amount of fee'))
+    percentage_fee = fields.Float(_('Percentage fee of Amazon sale'))
 
     offer_ids = fields.One2many(comodel_name='amazon.product.offer',
                                 inverse_name='product_detail_id',
-                                string='Offers of the product',
+                                string=_('Offers of the product'),
                                 store=True,
                                 compute='_compute_real_offer')
 
     historic_offer_ids = fields.One2many(comodel_name='amazon.historic.product.offer',
                                          inverse_name='product_detail_id',
-                                         string='Historic offers of the product')
+                                         string=_('Historic offers of the product'))
 
     @api.onchange('margin_percentage')
     def _onchange_margin_amount_based_on_percentage(self):

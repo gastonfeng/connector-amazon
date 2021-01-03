@@ -137,6 +137,15 @@ account.tax
 68. 'amazon.sale.data.importer'
     1. _inherit = 'amazon.importer'
 69. 'amazon.shipping.template'
+70. amazon.config.sqs.message
 
-
+```plantuml
+amazon.backend->amazon.backend:_scheduler_throw_jobs_for_price_changes
+amazon.backend->amazon.backend:_throw_delayed_jobs_for_price_changes
+amazon.backend->amazon.product.product.detail:search_count
+amazon.backend->amazon.config.sqs.message:search
+amazon.backend->amazon.product.product:with_delay,export_record
+amazon.product.stock.exporter->amazon.product.stock.exporter:run
+amazon.product.product->amazon.product.product:process_price_message
+```
     

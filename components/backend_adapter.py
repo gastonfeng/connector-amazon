@@ -3,6 +3,7 @@
 # © 2018 Halltic eSolutions S.L.
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 # This project is based on connector-magneto, developed by Camptocamp SA
+import traceback
 from io import StringIO
 
 import boto3
@@ -484,6 +485,7 @@ class AmazonAPI(object):
 
         except Exception as e:
             _logger.error("report_api(%s.%s) failed", '_submit_report', method)
+            _logger.error(traceback.print_exc())
             return e
 
     def _get_report_list_ids(self, report_ids):

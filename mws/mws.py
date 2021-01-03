@@ -11,6 +11,7 @@ import hmac
 import re
 import urllib
 from time import gmtime, strftime
+from urllib.parse import quote
 
 from . import utils
 
@@ -45,6 +46,7 @@ MARKETPLACES = {
     "IN": "https://mws.amazonservices.in",  # A21TJRUUN4KGV
     "IT": "https://mws-eu.amazonservices.com",  # APJ6JRA9NG5V4
     "UK": "https://mws-eu.amazonservices.com",  # A1F83G8C2ARO7P
+    "GB": "https://mws.amazonservices.co.uk",  # A1F83G8C2ARO7P
     "JP": "https://mws.amazonservices.jp",  # A1VC38T7YXB528
     "CN": "https://mws.amazonservices.com.cn",  # AAHKV2X7AFYLW
     "MX": "https://mws.amazonservices.com.mx",  # A1AM78C64UM0Y8
@@ -73,7 +75,7 @@ def remove_empty(d):
         Helper function that removes all keys from a dictionary (d),
         that have an empty value.
     """
-    for key in d.keys():
+    for key in list(d.keys()):
         if not d[key]:
             del d[key]
     return d
@@ -89,7 +91,7 @@ class DictWrapper(object):
         self.original = xml
         self._rootkey = rootkey
         self._mydict = utils.xml2dict().fromstring(remove_namespace(xml))
-        self._response_dict = self._mydict.get(self._mydict.keys()[0],
+        self._response_dict = self._mydict.get(list(self._mydict.keys())[0],
                                                self._mydict)
 
     @property
@@ -153,7 +155,7 @@ class MWS(object):
             self.domain = MARKETPLACES[self._backend.region.code]
         else:
             error_msg = "Incorrect region supplied ('%(region)s'). Must be one of the following: %(marketplaces)s" % {
-                "marketplaces": ', '.join(MARKETPLACES.keys()),
+                "marketplaces": ', '.join(list(MARKETPLACES.keys())),
                 "region": self._backend.region.code,
             }
             raise MWSError(error_msg)
@@ -188,10 +190,10 @@ class MWS(object):
         except Exception as e:
             raise e
 
-        request_description = '&'.join(
-            ['%s=%s' % (k, urllib.quote(params[k], safe='-_.~').encode('utf-8')) for k in sorted(params)])
+        sorted_dict = {k: params[k] for k in sorted(params)}
+        request_description = urllib.parse.urlencode(sorted_dict)
         signature = self.calc_signature(method, request_description)
-        url = '%s%s?%s&Signature=%s' % (self.domain, self.uri, request_description, urllib.quote(signature))
+        url = '%s%s?%s&Signature=%s' % (self.domain, self.uri, request_description, quote(signature))
         headers = {'User-Agent': 'python-amazon-mws/0.0.1 (Language=Python)'}
         headers.update(kwargs.get('extra_headers', {}))
 
@@ -205,7 +207,7 @@ class MWS(object):
             # When retrieving data from the response object,
             # be aware that response.content returns the content in bytes while response.text calls
             # response.content and converts it to unicode.
-            data = response.content
+            data = response.text
 
             # I do not check the headers to decide which content structure to server simply because sometimes
             # Amazon's MWS API returns XML error responses with "text/plain" as the Content-Type.
@@ -239,7 +241,8 @@ class MWS(object):
         """
         sig_data = method + '\n' + self.domain.replace('https://',
                                                        '').lower() + '\n' + self.uri + '\n' + request_description
-        return base64.b64encode(hmac.new(str(self._backend.key), sig_data, hashlib.sha256).digest())
+        dig = hmac.new(self._backend.key.encode(), sig_data.encode(), hashlib.sha256).digest()
+        return base64.b64encode(dig)
 
     def enumerate_param(self, param, values):
         """

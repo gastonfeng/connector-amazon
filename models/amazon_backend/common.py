@@ -304,7 +304,7 @@ class AmazonBackend(models.Model):
                 # We minus two minutes to now time
                 import_end_time = datetime.strptime(datetime.today().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S') - timedelta(minutes=2)
             if not import_start_time:
-                if backend.import_sales_from_date:
+                if backend.import_updated_sales_from_date:
                     import_start_time = datetime.strptime(backend.import_updated_sales_from_date, '%Y-%m-%d %H:%M:%S')
                 else:
                     import_start_time = import_end_time
